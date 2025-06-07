@@ -4,13 +4,55 @@ import { CampaignCreationWizard } from '@/components/campaign/CampaignCreationWi
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
 import { log } from '@/lib/logger';
+import { Button } from '@/components/ui/button';
 
 export function CampaignOnboard() {
   const navigate = useNavigate();
   const { wallet } = useStore();
 
-  const handleCampaignCreated = (campaignId: string) => {
+  const handleCampaignCreated = async (campaignId: string, campaignData: any) => {
     toast.success('Campaign created successfully!');
+    try {
+      // First, load existing campaigns
+      const response = await fetch('/api/load-campaigns');
+      let campaigns = [];
+      if (response.ok) {
+        const data = await response.json();
+        campaigns = data.campaigns || [];
+      } else if (response.status !== 404) {
+         throw new Error('Failed to load existing campaigns');
+      }
+
+      // Add the new campaign
+      const newCampaign = {
+        id: campaignId,
+        ...campaignData,
+        founderAddress: wallet.address, // Keep wallet address for ownership info
+        createdAt: new Date().toISOString()
+      };
+      campaigns.push(newCampaign);
+
+      // Save the updated list of campaigns
+      const saveResponse = await fetch('/api/save-campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ campaigns }),
+      });
+
+      if (!saveResponse.ok) {
+          throw new Error('Failed to save campaign');
+      }
+      
+      const result = await saveResponse.json();
+      log.info(result.message);
+
+    } catch (error) {
+      log.error('Error saving campaign:', error);
+      toast.error('Could not save campaign to server.');
+    }
+    
     navigate(`/campaign/${campaignId}`);
   };
 

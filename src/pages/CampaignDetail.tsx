@@ -1,36 +1,51 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ExternalLink, TrendingUp, Users, Clock, Target } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, Users, Clock, Target, Percent } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { SwapWidget } from '@/components/trading/SwapWidget';
 import { PriceChart } from '@/components/trading/PriceChart';
-import { useStore } from '@/store/useStore';
-import { useLivePoolStats } from '@/hooks/useLivePoolStats';
-import { mockCampaigns } from '@/data/mockData';
+import { log } from '@/lib/logger';
+import { toast } from 'sonner';
 
 export function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
-  const { campaigns } = useStore();
-  
-  // Look for campaign in both store campaigns and mock campaigns
-  const [campaign, setCampaign] = useState(() => {
-    const storeCampaign = campaigns.find(c => c.id === id);
-    const mockCampaign = mockCampaigns.find(c => c.id === id);
-    return storeCampaign || mockCampaign;
-  });
-  
-  const poolStats = useLivePoolStats(campaign?.amm.poolId || '');
-  
-  // Update campaign when store campaigns change
+  const [campaign, setCampaign] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    const storeCampaign = campaigns.find(c => c.id === id);
-    const mockCampaign = mockCampaigns.find(c => c.id === id);
-    setCampaign(storeCampaign || mockCampaign);
-  }, [campaigns, id]);
+    const loadCampaign = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/load-campaigns');
+        if (response.ok) {
+          const data = await response.json();
+          const foundCampaign = data.campaigns.find((c: any) => c.id === id);
+          setCampaign(foundCampaign || null);
+        } else {
+          toast.error('Failed to load campaigns.');
+          log.error('Failed to load campaigns', response);
+        }
+      } catch (error) {
+        toast.error('Failed to load campaigns.');
+        log.error('Failed to load campaigns', error);
+      }
+      setIsLoading(false);
+    };
+
+    loadCampaign();
+  }, [id]);
+
+  if (isLoading) {
+    return (
+        <div className="container mx-auto px-6 py-24 text-center">
+            <h1 className="text-2xl font-bold text-gray-900">Loading campaign...</h1>
+        </div>
+    );
+  }
 
   if (!campaign) {
     return (
@@ -45,7 +60,17 @@ export function CampaignDetail() {
     );
   }
 
-  const fundingPercentage = (campaign.currentFunding / campaign.fundingGoal) * 100;
+  // Mock data for fields that might be missing in local campaigns to avoid runtime errors
+  const currentFunding = campaign.currentFunding ?? 0;
+  const fundingGoal = campaign.fundingGoal ?? 1; // Avoid division by zero
+  const status = campaign.status ?? 'active';
+  const tokenPrice = campaign.tokenPrice ?? 0;
+  const totalSupply = campaign.totalSupply ?? 0;
+  const tokenSymbol = campaign.tokenSymbol ?? 'TKN';
+  const image = campaign.image ?? '/api/placeholder/400/300';
+  const launchDate = campaign.launchDate ? new Date(campaign.launchDate) : new Date();
+  const endDate = campaign.endDate ? new Date(campaign.endDate) : new Date();
+  const fundingPercentage = (currentFunding / fundingGoal) * 100;
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -68,7 +93,7 @@ export function CampaignDetail() {
           >
             <div className="relative overflow-hidden rounded-2xl">
               <img
-                src={campaign.image}
+                src={image}
                 alt={campaign.name}
                 className="h-64 w-full object-cover"
               />
@@ -76,7 +101,7 @@ export function CampaignDetail() {
               <div className="absolute bottom-6 left-6 right-6">
                 <div className="flex items-center gap-3 mb-2">
                   <Badge className="bg-white/90 text-gray-900">{campaign.industry}</Badge>
-                  <Badge className="bg-primary-100 text-primary-800">{campaign.status}</Badge>
+                  <Badge className="bg-primary-100 text-primary-800">{status}</Badge>
                 </div>
                 <h1 className="text-3xl font-bold text-white">{campaign.name}</h1>
               </div>
@@ -93,19 +118,8 @@ export function CampaignDetail() {
             </CardContent>
           </Card>
 
-          {/* Price Chart */}
-          {poolStats && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              <PriceChart
-                data={poolStats.priceHistory}
-                tokenSymbol={campaign.tokenSymbol}
-              />
-            </motion.div>
-          )}
+          {/* Price Chart - Optional: Could be re-enabled with mock data if needed */}
+          {/* <motion.div ...> <PriceChart ... /> </motion.div> */}
 
           {/* Campaign Stats */}
           <motion.div
@@ -120,22 +134,22 @@ export function CampaignDetail() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-primary-600">${campaign.tokenPrice}</div>
+                    <div className="text-2xl font-bold text-primary-600">${tokenPrice.toFixed(2)}</div>
                     <div className="text-sm text-gray-500">Token Price</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-primary-600">{campaign.amm.apr}%</div>
+                    <div className="text-2xl font-bold text-primary-600">{campaign.amm?.apr ?? 0}%</div>
                     <div className="text-sm text-gray-500">APR</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary-600">
-                      {campaign.circulatingSupply.toLocaleString()}
+                      {(campaign.circulatingSupply ?? 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500">Circulating Supply</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold text-primary-600">
-                      ${campaign.amm.tvl.toLocaleString()}
+                      ${(campaign.amm?.tvl ?? 0).toLocaleString()}
                     </div>
                     <div className="text-sm text-gray-500">TVL</div>
                   </div>
@@ -154,9 +168,9 @@ export function CampaignDetail() {
             transition={{ duration: 0.5, delay: 0.1 }}
           >
             <SwapWidget
-              tokenSymbol={campaign.tokenSymbol}
-              tokenPrice={poolStats?.price || campaign.tokenPrice}
-              priceChange24h={poolStats?.priceChange24h || 0}
+              tokenSymbol={tokenSymbol}
+              tokenPrice={tokenPrice}
+              priceChange24h={0}
             />
           </motion.div>
 
@@ -183,8 +197,8 @@ export function CampaignDetail() {
                     />
                   </div>
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>${campaign.currentFunding.toLocaleString()}</span>
-                    <span>${campaign.fundingGoal.toLocaleString()}</span>
+                    <span>${currentFunding.toLocaleString()}</span>
+                    <span>${fundingGoal.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -193,15 +207,15 @@ export function CampaignDetail() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Launch Date</span>
-                    <span className="font-medium">{campaign.launchDate.toLocaleDateString()}</span>
+                    <span className="font-medium">{launchDate.toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">End Date</span>
-                    <span className="font-medium">{campaign.endDate.toLocaleDateString()}</span>
+                    <span className="font-medium">{endDate.toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Total Supply</span>
-                    <span className="font-medium">{campaign.totalSupply.toLocaleString()}</span>
+                    <span className="font-medium">{totalSupply.toLocaleString()}</span>
                   </div>
                 </div>
 
@@ -217,34 +231,8 @@ export function CampaignDetail() {
             </Card>
           </motion.div>
 
-          {/* Pool Stats */}
-          {poolStats && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Pool Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">24h Volume</span>
-                    <span className="font-medium">${poolStats.volume24h.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Value Locked</span>
-                    <span className="font-medium">${poolStats.tvl.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">APR</span>
-                    <span className="font-medium text-green-600">{poolStats.apr}%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
+          {/* Pool Stats - Optional: Could be re-enabled with mock data if needed */}
+          {/* <motion.div ...> <Card> ... </Card> </motion.div> */}
         </div>
       </div>
     </div>

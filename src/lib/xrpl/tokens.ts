@@ -52,6 +52,11 @@ export class XRPLTokenService {
     rlusdAmount: number,
     pitTokenAmount: number
   ): Promise<string> {
+    console.log(`
+    /************************************************************/
+    /*                 ENTERING createAMMPool                   */
+    /************************************************************/
+    `);
     try {
       await xrplClient.connect();
 
@@ -65,6 +70,13 @@ export class XRPLTokenService {
       }
       const funderWallet = Wallet.fromSecret(funderSecret);
       const rlusdIssuer = funderWallet.classicAddress;
+
+      // Check if the campaign issuer and RLUSD issuer are the same
+      if (wallet.classicAddress === rlusdIssuer) {
+        const errorMessage = `Campaign issuer (${wallet.classicAddress}) cannot be the same as RLUSD issuer (${rlusdIssuer}). Please use different wallets for VITE_ISSUER_SECRET and VITE_RLUSD_ISSUER_SECRET.`;
+        log.error('XRPL_TOKEN', errorMessage);
+        throw new Error(errorMessage);
+      }
 
       // Enable rippling on the issuer account to allow token transfers
       try {
@@ -130,14 +142,43 @@ export class XRPLTokenService {
 
       const pitCurrencyCode = convertStringToHex(pitTokenId).padEnd(40, '0');
 
-      // --- DEBUGGING ---
-      log.info('DEBUG: AMM ISSUER CHECK', `Campaign Issuer: ${wallet.classicAddress}, RLUSD Issuer: ${rlusdIssuer}, Are Same: ${wallet.classicAddress === rlusdIssuer}`);
-      // --- END DEBUGGING ---
+      // --- START REVISED AMM CREATION LOGIC ---
 
-      // Create AMM pool for PIT/RLUSD pair
+      // Step 1: The RLUSD issuer (funder) must trust the Campaign issuer to receive the campaign token.
+      log.info('AMM_SETUP', `Setting Trust Line from RLUSD Issuer (${funderWallet.classicAddress}) to Campaign Issuer (${wallet.classicAddress})`);
+      const trustSetTxForFunder = {
+        TransactionType: 'TrustSet' as const,
+        Account: funderWallet.classicAddress,
+        LimitAmount: {
+          currency: pitCurrencyCode,
+          issuer: wallet.classicAddress,
+          value: (pitTokenAmount * 2).toString() // Set a generous limit
+        }
+      };
+      await xrplClient.submitTransaction(trustSetTxForFunder, funderWallet);
+      log.info('AMM_SETUP', 'Trust line from RLUSD issuer to Campaign issuer set successfully.');
+
+      // Step 2: The Campaign issuer sends its newly created token to the RLUSD issuer.
+      // This gives the RLUSD issuer the balance it needs for the AMM pool.
+      log.info('AMM_SETUP', `Sending initial campaign tokens from Campaign Issuer to RLUSD Issuer...`);
+      const sendCampaignTokenTx = {
+        TransactionType: 'Payment' as const,
+        Account: wallet.classicAddress,
+        Destination: funderWallet.classicAddress,
+        Amount: {
+          currency: pitCurrencyCode,
+          issuer: wallet.classicAddress,
+          value: pitTokenAmount.toString()
+        }
+      };
+      await xrplClient.submitTransaction(sendCampaignTokenTx, wallet);
+      log.info('AMM_SETUP', 'Campaign tokens sent successfully.');
+
+      // Step 3: The RLUSD issuer, now holding both assets, creates the AMM pool.
+      log.info('AMM_SETUP', 'RLUSD Issuer is creating the AMM pool...');
       const ammCreateTransaction = {
         TransactionType: 'AMMCreate',
-        Account: wallet.classicAddress,
+        Account: funderWallet.classicAddress,
         Amount: {
           currency: rlusdCurrencyCode,
           issuer: rlusdIssuer, 
@@ -145,13 +186,15 @@ export class XRPLTokenService {
         },
         Amount2: {
           currency: pitCurrencyCode,
-          issuer: wallet.classicAddress,
+          issuer: wallet.classicAddress, // The original issuer of the campaign token
           value: pitTokenAmount.toString()
         },
         TradingFee: 500 // 0.5% trading fee
       };
 
-      const result = await xrplClient.submitTransaction(ammCreateTransaction, wallet);
+      const result = await xrplClient.submitTransaction(ammCreateTransaction, funderWallet);
+
+      // --- END REVISED AMM CREATION LOGIC ---
       
       if (result.result.meta.TransactionResult === 'tesSUCCESS') {
         // Extract AMM ID from transaction metadata

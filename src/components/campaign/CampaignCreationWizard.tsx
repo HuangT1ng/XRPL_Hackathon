@@ -43,7 +43,7 @@ const INDUSTRIES = [
   'Manufacturing', 'Real Estate', 'Education', 'Entertainment', 'Other'
 ];
 
-export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId: string) => void }) {
+export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId: string, campaignData: CampaignData) => void }) {
   const { createCampaign, wallet, isLoading } = useStore();
   
   const [currentStep, setCurrentStep] = useState(0);
@@ -132,7 +132,7 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
 
       log.info('WIZARD', '🎉 Campaign created successfully in wizard!', { campaignId });
       toast.success('Campaign created successfully!');
-      onComplete(campaignId);
+      onComplete(campaignId, campaignData);
     } catch (error) {
       log.error('WIZARD', '❌ Campaign creation error in wizard', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign');

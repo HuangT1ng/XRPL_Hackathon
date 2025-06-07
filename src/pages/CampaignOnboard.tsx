@@ -9,10 +9,6 @@ export function CampaignOnboard() {
   const navigate = useNavigate();
   const { wallet } = useStore();
 
-  const handleCampaignCreated = (campaignId: string) => {
-    toast.success('Campaign created successfully!');
-    navigate(`/campaign/${campaignId}`);
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -42,7 +38,7 @@ export function CampaignOnboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <CampaignCreationWizard onComplete={handleCampaignCreated} />
+          <CampaignCreationWizard />
         </motion.div>
       </div>
     </div>

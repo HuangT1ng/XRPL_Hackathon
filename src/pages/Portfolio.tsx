@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useStore } from '@/store/useStore';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export function Portfolio() {
-  const { campaigns, wallet } = useStore();
+  const { campaigns, wallet, portfolio, refreshPortfolio, isLoading } = useStore();
 
   const myCampaigns = useMemo(() => {
     if (!wallet.address) return [];
@@ -23,6 +24,15 @@ export function Portfolio() {
     return campaigns.filter(c => c.founderAddress !== wallet.address);
   }, [campaigns, wallet.address, myCampaigns]);
 
+  // Handler for refreshing portfolio
+  const handleRefreshPortfolio = async () => {
+    try {
+      await refreshPortfolio();
+      toast.success('Portfolio refreshed!');
+    } catch (error) {
+      toast.error('Failed to refresh portfolio.');
+    }
+  };
 
   if (!wallet.isConnected) {
     return (
@@ -37,18 +47,64 @@ export function Portfolio() {
 
   return (
     <div className="container mx-auto px-6 py-8">
-      <div className="mb-8 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Portfolio</h1>
-          <p className="text-gray-600 mt-2">Here are the campaigns you have launched and other available campaigns.</p>
-        </div>
-        <Button asChild>
+      <div className="flex justify-end mb-4">
+        <button
+          className="px-4 py-2 bg-black text-white rounded shadow hover:bg-gray-900 disabled:opacity-50"
+          onClick={handleRefreshPortfolio}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Refreshing...' : 'Refresh Portfolio'}
+        </button>
+      </div>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <h1 className="text-3xl font-bold text-gray-900">My Portfolio</h1>
+        <p className="text-gray-600 mt-2">Here are the campaigns you have launched and other available campaigns.</p>
+        <Button asChild className="mt-4">
           <Link to="/onboard">
             <Plus className="mr-2 h-4 w-4" />
             Launch Campaign
           </Link>
         </Button>
       </div>
+
+      {/* Wallet Balance Card */}
+      {wallet.isConnected && (
+        <div className="mb-8 flex justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-lg text-center">Wallet Balance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center gap-2">
+                <div className="text-2xl font-bold text-green-600">
+                  {wallet.balance ?? 0} <span className="text-base text-gray-900 font-normal">XRP</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Token Holdings Card */}
+      {portfolio && portfolio.holdings && portfolio.holdings.length > 0 && (
+        <div className="mb-8 flex justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-lg text-center">My Token Holdings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y divide-gray-200">
+                {portfolio.holdings.map((holding, idx) => (
+                  <li key={holding.tokenSymbol + idx} className="py-2 flex justify-between items-center">
+                    <span className="font-medium">{holding.tokenSymbol}</span>
+                    <span>{holding.quantity}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {myCampaigns.length === 0 && otherCampaigns.length === 0 ? (
          <motion.div

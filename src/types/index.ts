@@ -56,6 +56,7 @@ export interface InvestorPortfolio {
 export interface TokenHolding {
   campaignId: string;
   tokenSymbol: string;
+  issuer: string;
   quantity: number;
   averageCost: number;
   currentPrice: number;
@@ -103,4 +104,22 @@ export interface PricePoint {
   timestamp: number;
   price: number;
   volume: number;
+}
+
+export interface XRPLAMMObject {
+  Account: string;
+  AMMID: string;
+  Amount: string | { value: string; currency?: string };
+  Amount2: string | { value: string; currency?: string };
+  index: string;
+  // Add more fields as needed
+}
+
+export interface XRPLEscrowObject {
+  Account: string;
+  Amount: string | { value: string };
+  Destination: string;
+  index: string;
+  FinishAfter: number;
+  // Add more fields as needed
 }

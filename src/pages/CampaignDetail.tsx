@@ -19,18 +19,25 @@ export function CampaignDetail() {
   
   // Look for campaign in both store campaigns and mock campaigns
   const [campaign, setCampaign] = useState(() => {
-    const storeCampaign = campaigns.find(c => c.id === id);
-    const mockCampaign = mockCampaigns.find(c => c.id === id);
-    return storeCampaign || mockCampaign;
+    return campaigns.find((c: any) => c.id === id);
   });
   
   const poolStats = useLivePoolStats(campaign?.amm.poolId || '');
   
   // Update campaign when store campaigns change
   useEffect(() => {
-    const storeCampaign = campaigns.find(c => c.id === id);
-    const mockCampaign = mockCampaigns.find(c => c.id === id);
-    setCampaign(storeCampaign || mockCampaign);
+    const storeCampaign = campaigns.find((c: any) => c.id === id);
+    if (storeCampaign) {
+      setCampaign(storeCampaign);
+    } else {
+      // Fetch from server if not found in store
+      fetch('http://localhost:3000/campaigns')
+        .then(res => res.json())
+        .then((data: any[]) => {
+          const found = data.find((c: any) => c.id === id);
+          if (found) setCampaign(found);
+        });
+    }
   }, [campaigns, id]);
 
   if (!campaign) {

@@ -1,11 +1,15 @@
 import { create } from 'zustand';
 import { Wallet } from 'xrpl';
-import { WalletState, SMECampaign, InvestorPortfolio, PoolStats } from '@/types';
+import { WalletState, SMECampaign, InvestorPortfolio, PoolStats, XRPLAMMObject, XRPLEscrowObject } from '@/types';
 import { crowdLiftXRPL } from '@/lib/xrpl';
 import { xrplWalletService } from '@/lib/xrpl/wallet';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
-import { issuerCampaigns } from '@/data/mockData';
+// import { issuerCampaigns } from '@/data/mockData';
+import { xrplClient } from '@/lib/xrpl';
+import { decodeHexCurrency } from '@/lib/xrpl/utils';
+import { mockCampaigns } from '@/data/mockData';
+import { useNavigate } from 'react-router-dom';
 
 interface AppState {
   // Wallet
@@ -123,168 +127,57 @@ export const useStore = create<AppState>((set, get) => ({
   setSelectedCampaign: (campaign) => set({ selectedCampaign: campaign }),
   
   createCampaign: async (campaignData) => {
-    log.info('CAMPAIGN', '=== STARTING CAMPAIGN CREATION ===');
-    log.debug('CAMPAIGN', 'Input campaign data', campaignData);
-    
     const { wallet, campaigns } = get();
-    log.debug('CAMPAIGN', 'Current state check', { 
-      walletConnected: wallet.isConnected, 
-      hasXRPLWallet: !!wallet.xrplWallet,
-      walletAddress: wallet.address,
-      campaignsCount: campaigns.length 
-    });
-    
     if (!wallet.isConnected || !wallet.xrplWallet) {
-      log.error('CAMPAIGN', 'Wallet not connected properly', { 
-        isConnected: wallet.isConnected, 
-        hasXRPLWallet: !!wallet.xrplWallet 
-      });
       throw new Error('Wallet not connected');
     }
 
-    set({ isLoading: true, error: null });
+    // Build the new campaign object
+    const campaignId = `campaign-${Date.now()}`;
+    const newCampaign: SMECampaign = {
+      id: campaignId,
+      name: campaignData.name || 'Unnamed Campaign',
+      description: campaignData.description || '',
+      industry: campaignData.industry || '',
+      fundingGoal: campaignData.fundingGoal || 0,
+      currentFunding: 0,
+      tokenSymbol: campaignData.tokenSymbol || 'PIT',
+      tokenPrice: campaignData.tokenPrice || 1,
+      totalSupply: campaignData.totalSupply || 1000000,
+      circulatingSupply: 0,
+      founderAddress: wallet.address!,
+      status: 'active',
+      createdAt: new Date(),
+      launchDate: campaignData.launchDate || new Date(),
+      endDate: campaignData.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
+      milestones: campaignData.milestones || [],
+      image: campaignData.image || '/api/placeholder/400/300',
+      amm: {
+        poolId: `pool_${campaignId}`,
+        tvl: 0,
+        apr: 0,
+        depth: 0
+      }
+    };
+
+    // Update campaigns on server
     try {
-      const issuerSecret = config.secrets.issuerSecret;
-      if (!issuerSecret) {
-        throw new Error("VITE_ISSUER_SECRET is not set in the environment.");
-      }
-      const issuerWallet = Wallet.fromSecret(issuerSecret);
-      log.info('CAMPAIGN', `Using issuer wallet: ${issuerWallet.address}`);
-
-      log.info('CAMPAIGN', 'Campaign creation started with config', { 
-        skipRealTransactions: config.dev.skipRealTransactions,
-        useMockData: config.dev.useMockData 
+      await fetch('http://localhost:3000/campaigns', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCampaign),
       });
-
-      // Create campaign object first
-      const campaignId = `campaign-${Date.now()}`;
-      log.info('CAMPAIGN', `Generated campaign ID: ${campaignId}`);
-      
-      let ammId: string | undefined;
-
-      if (!config.dev.skipRealTransactions) {
-        log.info('CAMPAIGN', 'Starting real XRPL transactions...');
-        
-        // 1. Create DID for SME identity
-        log.info('CAMPAIGN', 'Step 1: Creating DID for SME identity');
-        const kycData = {
-          companyName: campaignData.name || '',
-          registrationNumber: `REG${Date.now()}`,
-          address: 'Singapore',
-          contactEmail: 'contact@company.com',
-          contactPhone: '+65 1234 5678',
-          businessType: campaignData.industry || '',
-          documents: {
-            registrationCertificate: 'cert_hash',
-            taxCertificate: 'tax_hash',
-            bankStatement: 'bank_hash'
-          }
-        };
-        log.debug('CAMPAIGN', 'KYC data prepared', kycData);
-
-        try {
-          const did = await crowdLiftXRPL.identity.createSMEDID(issuerWallet, kycData);
-          log.info('CAMPAIGN', 'DID created successfully', { did });
-        } catch (error) {
-          log.error('CAMPAIGN', 'Failed to create DID', error);
-          throw new Error(`DID creation failed: ${error}`);
-        }
-
-        // 2. Issue fungible token
-        log.info('CAMPAIGN', 'Step 2: Issuing fungible token from issuer wallet');
-        let issuedTokenCurrency;
-        try {
-          issuedTokenCurrency = await crowdLiftXRPL.tokens.issueFungibleToken(
-            issuerWallet,
-            campaignData.tokenSymbol || 'PIT',
-            campaignData.totalSupply || 1000000
-          );
-          log.info('CAMPAIGN', 'Fungible token issued successfully', { currency: issuedTokenCurrency });
-        } catch (error) {
-          log.error('CAMPAIGN', 'Failed to issue fungible token', error);
-          throw new Error(`Token issuance failed: ${error}`);
-        }
-
-        // 3. Create AMM pool
-        log.info('CAMPAIGN', 'Step 3: Creating AMM pool');
-        const initialRLUSDLiquidity = Math.floor((campaignData.fundingGoal || 100000) * 0.1);
-        const initialTokenLiquidity = Math.floor((campaignData.totalSupply || 1000000) * 0.1);
-        
-        log.debug('CAMPAIGN', 'AMM liquidity calculations', { 
-          initialRLUSDLiquidity, 
-          initialTokenLiquidity,
-          fundingGoal: campaignData.fundingGoal,
-          totalSupply: campaignData.totalSupply 
-        });
-
-        try {
-          ammId = await crowdLiftXRPL.tokens.createAMMPool(
-            issuerWallet,
-            issuedTokenCurrency,
-            initialRLUSDLiquidity,
-            initialTokenLiquidity
-          );
-          log.info('CAMPAIGN', 'AMM pool created successfully', { ammId });
-        } catch (error) {
-          log.error('CAMPAIGN', 'Failed to create AMM pool', error);
-          throw new Error(`AMM pool creation failed: ${error}`);
-        }
-      } else {
-        log.info('CAMPAIGN', 'Skipping real XRPL transactions (skipRealTransactions=true)');
-      }
-
-      // Create campaign object
-      log.info('CAMPAIGN', 'Step 4: Creating campaign object');
-      const finalAmmId = config.dev.skipRealTransactions ? `pool-${Date.now()}` : ammId;
-      if (!finalAmmId) {
-        log.error('CAMPAIGN', 'AMM ID is missing after creation attempt.');
-        throw new Error('Could not retrieve AMM ID after creation.');
-      }
-      
-      const newCampaign: SMECampaign = {
-        id: campaignId,
-        name: campaignData.name || 'Unnamed Campaign',
-        description: campaignData.description || '',
-        industry: campaignData.industry || '',
-        fundingGoal: campaignData.fundingGoal || 0,
-        currentFunding: 0,
-        tokenSymbol: campaignData.tokenSymbol || 'PIT',
-        tokenPrice: campaignData.tokenPrice || 1,
-        totalSupply: campaignData.totalSupply || 1000000,
-        circulatingSupply: 0,
-        founderAddress: issuerWallet.address,
-        status: 'active',
-        createdAt: new Date(),
-        launchDate: campaignData.launchDate || new Date(),
-        endDate: campaignData.endDate || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-        milestones: campaignData.milestones || [],
-        image: '/api/placeholder/400/300',
-        amm: {
-          poolId: finalAmmId,
-          tvl: 0,
-          apr: 0,
-          depth: 0
-        }
-      };
-      log.debug('CAMPAIGN', 'Campaign object created', newCampaign);
-
-      // Add to campaigns list
-      log.info('CAMPAIGN', 'Step 5: Adding campaign to state');
-      set({ 
-        campaigns: [...campaigns, newCampaign],
-        isLoading: false 
-      });
-      
-      log.info('CAMPAIGN', '=== CAMPAIGN CREATION COMPLETED SUCCESSFULLY ===', { campaignId });
-      return campaignId;
-    } catch (error) {
-      log.error('CAMPAIGN', '=== CAMPAIGN CREATION FAILED ===', error);
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to create campaign',
-        isLoading: false 
-      });
-      throw error;
+    } catch (e) {
+      // Log but don't block UI
+      console.error('Failed to update campaigns on server:', e);
     }
+
+    // Add to in-memory state
+    set({
+      campaigns: [...campaigns, newCampaign],
+    });
+
+    return campaignId;
   },
   
   // Portfolio
@@ -324,9 +217,11 @@ export const useStore = create<AppState>((set, get) => ({
         // Process each token line
         for (const line of accountLines.result.lines) {
           if (parseFloat(line.balance) > 0) {
+            const decodedSymbol = decodeHexCurrency(line.currency);
             portfolioData.holdings.push({
-              campaignId: line.currency, // Using currency as campaignId for now
-              tokenSymbol: line.currency,
+              campaignId: `${decodedSymbol}-${line.account}`,
+              tokenSymbol: decodedSymbol,
+              issuer: line.account,
               quantity: parseFloat(line.balance),
               averageCost: 0, // Would need historical data to calculate
               currentPrice: 0, // Would need price feed

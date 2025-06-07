@@ -280,3 +280,68 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 **Built with ❤️ on XRPL for the future of SME financing**
+
+## 🚀 Demo Video
+
+[![Watch the demo](https://img.youtube.com/vi/your-demo-video-id/0.jpg)](https://youtu.be/your-demo-video-id)
+
+> _Click the image above to watch a full walkthrough of CrowdLift, including campaign creation, wallet integration, and real XRPL transactions._
+
+## 🖼️ Screenshots
+
+| Launch Campaign | Browse Campaigns | Portfolio |
+|----------------|------------------|-----------|
+| ![Launch](./screenshots/launch.png) | ![Browse](./screenshots/browse.png) | ![Portfolio](./screenshots/portfolio.png) |
+
+## 💡 How CrowdLift Works with the XRP Ledger
+
+- **Wallet Integration:** Users connect or import an XRPL wallet (testnet) directly in the browser.
+- **Campaign Creation:** When a campaign is launched, a new token is defined and associated with the campaign. The campaign is stored in a shared JSON file, accessible to all clients on the network.
+- **Trust Lines:** Investors can create trust lines for campaign tokens using real XRPL transactions.
+- **Token Purchase:** Investors send XRP to the campaign issuer, and the issuer sends campaign tokens back, all via XRPL Payment transactions.
+- **Portfolio:** Users can view their XRP and token balances, fetched live from the XRPL testnet.
+- **All transactions are signed and submitted via xrpl.js, and can be viewed on the XRPL testnet block explorer.**
+
+## 🎥 Video Walkthrough & Repo Structure
+
+[![Watch the walkthrough](https://img.youtube.com/vi/your-walkthrough-video-id/0.jpg)](https://youtu.be/your-walkthrough-video-id)
+
+- Explains the project, code structure, and demonstrates all features live.
+- Shows real transactions on the XRPL testnet.
+- Explains how the app satisfies all hackathon requirements.
+
+## 🔗 Block Explorer Link
+
+- [View CrowdLift Transactions on XRPL Testnet](https://testnet.xrpl.org/)
+  - _Paste your actual transaction hashes or addresses here for direct links._
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS
+- **Backend:** Node.js (Express or similar, for serving and updating campaigns JSON)
+- **XRPL:** xrpl.js
+
+## 🏁 Getting Started
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+2. **Start the backend server (serves campaigns JSON and handles POSTs):**
+   ```bash
+   node api/server.js
+   # or your custom server script
+   ```
+3. **Start the frontend:**
+   ```bash
+   npm run dev
+   ```
+4. **Access the app:**
+   - Frontend: [http://localhost:5173](http://localhost:5173)
+   - Campaigns JSON: [http://localhost:3000/campaigns](http://localhost:3000/campaigns)
+
+## 📝 Notes
+
+- All campaign data is stored in `src/data/mockdata.json` and shared across the network.
+- The app simulates KYC with a loading overlay after campaign creation.
+- All XRPL transactions are real and can be viewed on the testnet explorer.

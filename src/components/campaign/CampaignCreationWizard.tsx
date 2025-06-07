@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
 import { log } from '@/lib/logger';
+import { useNavigate } from 'react-router-dom';
 
 interface CampaignData {
   // Company Information
@@ -49,8 +50,10 @@ const INDUSTRIES = [
   'Manufacturing', 'Real Estate', 'Education', 'Entertainment', 'Other'
 ];
 
-export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId: string) => void }) {
+export function CampaignCreationWizard() {
   const { createCampaign, wallet, isLoading } = useStore();
+  const navigate = useNavigate();
+  const [kycLoading, setKycLoading] = useState(false);
   
   const [currentStep, setCurrentStep] = useState(0);
   const [campaignData, setCampaignData] = useState<CampaignData>({
@@ -105,15 +108,13 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
   const handleSubmit = async () => {
     log.info('WIZARD', '=== HANDLE SUBMIT CLICKED ===');
     log.debug('WIZARD', 'Current campaign data', campaignData);
-    
     if (!wallet.isConnected) {
       log.error('WIZARD', 'Wallet not connected in handleSubmit');
       toast.error('Please connect your wallet first');
       return;
     }
-
     log.info('WIZARD', 'Starting campaign creation from wizard...');
-    
+    setKycLoading(true);
     try {
       toast.info('Creating campaign on XRPL...');
       log.info('WIZARD', 'About to call createCampaign store method...');
@@ -141,11 +142,11 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
           depth: 0
         }
       });
-
-      log.info('WIZARD', '🎉 Campaign created successfully in wizard!', { campaignId });
-      toast.success('Campaign created successfully!');
-      onComplete(campaignId);
+      await new Promise(resolve => setTimeout(resolve, 10000)); // 10s KYC delay
+      setKycLoading(false);
+      navigate('/campaigns');
     } catch (error) {
+      setKycLoading(false);
       log.error('WIZARD', '❌ Campaign creation error in wizard', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign');
     }
@@ -319,7 +320,7 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
                 value={campaignData.tokenSymbol}
                 onChange={(e) => updateCampaignData('tokenSymbol', e.target.value.toUpperCase())}
                 placeholder="PIT"
-                maxLength={6}
+                maxLength={10}
               />
             </div>
             
@@ -414,6 +415,15 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {kycLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+          <div className="bg-white rounded-xl shadow-lg p-10 flex flex-col items-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-primary-600 mb-6" />
+            <h2 className="text-2xl font-bold mb-2 text-center">AI is performing KYC...</h2>
+            <p className="text-gray-600 text-center">Please wait while we verify your business details and onboard your campaign to XRPL.</p>
+          </div>
+        </div>
+      )}
       {/* Progress Steps */}
       <div className="mb-8 flex justify-center">
         <div className="flex items-center justify-center gap-0 max-w-3xl w-full">

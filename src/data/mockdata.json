@@ -1,0 +1,79 @@
+{
+  "campaigns": [
+    {
+      "id": "1",
+      "name": "CoffeeChain",
+      "description": "Revolutionizing the coffee industry with blockchain-based supply chain tracking and fair trade practices. Our platform connects coffee farmers directly with consumers, ensuring transparency and fair compensation.",
+      "image": "https://images.pexels.com/photos/302899/pexels-photo-302899.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "industry": "Food & Beverage",
+      "fundingGoal": 1000000,
+      "currentFunding": 650000,
+      "tokenSymbol": "PIT-COF",
+      "tokenPrice": 1.5,
+      "totalSupply": 1000000,
+      "circulatingSupply": 433333,
+      "status": "active",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "launchDate": "2024-01-15T00:00:00Z",
+      "endDate": "2024-07-15T00:00:00Z",
+      "founderAddress": "rMqQ4u96LJC9yUmAusQFZUKyM9cvKbEZZY",
+      "milestones": [],
+      "amm": {
+        "poolId": "pool_cof_rlusd",
+        "tvl": 975000,
+        "apr": 14.2,
+        "depth": 650000
+      }
+    },
+    {
+      "id": "2",
+      "name": "GreenEnergy",
+      "description": "Pioneering sustainable energy solutions with innovative solar and wind power technologies. Our smart grid system optimizes renewable energy distribution for maximum efficiency.",
+      "image": "https://images.pexels.com/photos/414837/pexels-photo-414837.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "industry": "CleanTech",
+      "fundingGoal": 2000000,
+      "currentFunding": 850000,
+      "tokenSymbol": "PIT-GRN",
+      "tokenPrice": 2.75,
+      "totalSupply": 500000,
+      "circulatingSupply": 309091,
+      "status": "active",
+      "createdAt": "2024-01-15T00:00:00Z",
+      "launchDate": "2024-02-01T00:00:00Z",
+      "endDate": "2024-08-01T00:00:00Z",
+      "founderAddress": "rMqQ4u96LJC9yUmAusQFZUKyM9cvKbEZZY",
+      "milestones": [],
+      "amm": {
+        "poolId": "pool_grn_rlusd",
+        "tvl": 2337500,
+        "apr": 16.5,
+        "depth": 850000
+      }
+    },
+    {
+      "id": "3",
+      "name": "EduFund",
+      "description": "Democratizing education through blockchain-based credentialing and micro-scholarships. Our platform connects students with educational opportunities and verifies achievements securely.",
+      "image": "https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg?auto=compress&cs=tinysrgb&w=800",
+      "industry": "Education",
+      "fundingGoal": 1500000,
+      "currentFunding": 525000,
+      "tokenSymbol": "PIT-EDU",
+      "tokenPrice": 1.25,
+      "totalSupply": 750000,
+      "circulatingSupply": 420000,
+      "status": "active",
+      "createdAt": "2024-02-01T00:00:00Z",
+      "launchDate": "2024-02-15T00:00:00Z",
+      "endDate": "2024-08-15T00:00:00Z",
+      "founderAddress": "rMqQ4u96LJC9yUmAusQFZUKyM9cvKbEZZY",
+      "milestones": [],
+      "amm": {
+        "poolId": "pool_edu_rlusd",
+        "tvl": 656250,
+        "apr": 11.8,
+        "depth": 525000
+      }
+    }
+  ]
+}

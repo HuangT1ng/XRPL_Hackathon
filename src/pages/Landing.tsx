@@ -30,53 +30,10 @@ const features = [
   },
 ];
 
-// Mock campaign data for beautiful cards
-const mockCampaigns = [
-  {
-    id: '1',
-    name: 'GreenBrew Coffee Expansion',
-    industry: 'Food & Beverage',
-    description: 'Raising funds to open 5 new eco-friendly coffee shops in Singapore.',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80',
-    fundingGoal: 100000,
-    currentFunding: 65000,
-    founder: 'Eco Ventures',
-  },
-  {
-    id: '2',
-    name: 'MedTech AI Diagnostics',
-    industry: 'Healthcare',
-    description: 'AI-powered diagnostics for faster, more accurate patient care.',
-    image: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80',
-    fundingGoal: 200000,
-    currentFunding: 120000,
-    founder: 'HealthNext',
-  },
-  {
-    id: '3',
-    name: 'EduSpark Learning Platform',
-    industry: 'Education',
-    description: 'Interactive online platform making STEM fun for kids.',
-    image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=400&q=80',
-    fundingGoal: 50000,
-    currentFunding: 42000,
-    founder: 'SparkEd',
-  },
-  {
-    id: '4',
-    name: 'UrbanSmart Mobility',
-    industry: 'Technology',
-    description: 'Smart e-scooter sharing for urban commuters.',
-    image: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80',
-    fundingGoal: 150000,
-    currentFunding: 90000,
-    founder: 'UrbanSmart',
-  },
-];
-
 export function Landing() {
   const { setCampaigns, campaigns, wallet, connectWallet, isLoading } = useStore();
   const ISSUER_ADDRESS = 'rP9g3QyYkGZUvB9k2v6so7qA3iF4b1Bw8X';
+  const [featuredCampaigns, setFeaturedCampaigns] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -88,6 +45,14 @@ export function Landing() {
       fetchCampaigns();
     }
   }, [setCampaigns, campaigns.length]);
+
+  // Fetch featured campaigns from server
+  useEffect(() => {
+    fetch('http://localhost:3000/campaigns')
+      .then(res => res.json())
+      .then(data => setFeaturedCampaigns(data))
+      .catch(() => setFeaturedCampaigns([]));
+  }, []);
 
   return (
     <div className="w-full">
@@ -126,7 +91,7 @@ export function Landing() {
                   onClick={() => connectWallet()} 
                   disabled={isLoading}
                   size="lg"
-                  className="bg-primary-600 hover:bg-primary-700 text-white"
+                  className="bg-primary-600 hover:bg-primary-700 text-black"
                 >
                   <Wallet className="mr-2 h-4 w-4" />
                   {isLoading ? 'Connecting...' : 'Connect Wallet'}
@@ -190,7 +155,7 @@ export function Landing() {
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {mockCampaigns.slice(0, 3).map((campaign, index) => (
+            {featuredCampaigns.map((campaign, index) => (
               <motion.div
                 key={campaign.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -226,7 +191,7 @@ export function Landing() {
           </div>
           <div className="mt-10 text-center">
             <Button asChild variant="outline" size="lg">
-              <Link to="/portfolio">
+              <Link to="/campaigns">
                 View All Campaigns
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

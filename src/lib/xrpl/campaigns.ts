@@ -2,13 +2,16 @@ import { xrplClient, XRPLClient } from './client';
 import { XRPLTokenService } from './tokens';
 import { SMECampaign } from '@/types';
 import { log } from '@/lib/logger';
-import { Wallet, convertHexToString } from 'xrpl';
+import { Wallet, convertHexToString, Client, TrustSet, xrpToDrops } from 'xrpl';
+import { config } from '../config';
 
 export class XRPLCampaignService {
   private tokenService: XRPLTokenService;
+  private client: Client;
 
   constructor() {
     this.tokenService = new XRPLTokenService();
+    this.client = new Client(config.xrpl.server);
   }
 
   async getIssuerCampaigns(issuerAddress: string): Promise<SMECampaign[]> {
@@ -70,6 +73,39 @@ export class XRPLCampaignService {
     } catch (error) {
       log.error('CAMPAIGN_SERVICE', 'Error fetching issuer campaigns', { error });
       return []; // Return empty array on error
+    }
+  }
+
+  async createTrustLine(
+    userAddress: string,
+    issuerAddress: string,
+    currency: string,
+    limit: string = '1000000000' // Default limit of 1 billion tokens
+  ): Promise<void> {
+    if (!this.client.isConnected()) {
+      await this.client.connect();
+    }
+
+    const trustSetTx: TrustSet = {
+      TransactionType: 'TrustSet',
+      Account: userAddress,
+      LimitAmount: {
+        currency: currency,
+        issuer: issuerAddress,
+        value: limit
+      }
+    };
+
+    try {
+      const prepared = await this.client.autofill(trustSetTx);
+      const signed = await this.client.submit(prepared);
+
+      if (signed.result.engine_result !== 'tesSUCCESS') {
+        throw new Error(`Transaction failed: ${signed.result.engine_result_message}`);
+      }
+    } catch (error) {
+      console.error('Error creating trust line:', error);
+      throw error;
     }
   }
 }

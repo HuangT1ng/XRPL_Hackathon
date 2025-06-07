@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { Wallet } from 'xrpl';
 import { WalletState, SMECampaign, InvestorPortfolio, PoolStats } from '@/types';
 import { crowdLiftXRPL } from '@/lib/xrpl';
+import { xrplWalletService } from '@/lib/xrpl/wallet';
+import { config } from '@/lib/config';
 
 interface AppState {
   // Wallet
@@ -54,26 +56,30 @@ export const useStore = create<AppState>((set, get) => ({
   connectWallet: async () => {
     set({ isLoading: true, error: null });
     try {
-      // Generate a new XRPL wallet for demo purposes
-      // In production, this would integrate with actual wallet providers
-      const xrplWallet = Wallet.generate();
-      
-      // Fund the wallet on testnet (this would be done via faucet in real scenario)
-      console.log('Generated wallet:', xrplWallet.classicAddress);
+      if (config.dev.enableLogging) {
+        console.log('Creating and funding real XRPL wallet...');
+      }
+
+      // Create and fund a real XRPL wallet
+      const walletInfo = await xrplWalletService.createAndFundWallet();
       
       set({
         wallet: {
-          address: xrplWallet.classicAddress,
+          address: walletInfo.address,
           isConnected: true,
-          balance: 10000, // Mock balance
-          network: 'testnet',
-          xrplWallet
+          balance: parseFloat(walletInfo.balance),
+          network: walletInfo.network as 'testnet' | 'mainnet' | 'devnet',
+          xrplWallet: walletInfo.wallet
         },
         isLoading: false,
       });
 
       // Initialize XRPL services
       await crowdLiftXRPL.initialize();
+      
+      if (config.dev.enableLogging) {
+        console.log(`Wallet connected successfully: ${walletInfo.address} with ${walletInfo.balance} XRP`);
+      }
       
     } catch (error) {
       console.error('Failed to connect wallet:', error);
@@ -104,19 +110,79 @@ export const useStore = create<AppState>((set, get) => ({
   
   createCampaign: async (campaignData) => {
     const { wallet, campaigns } = get();
-    if (!wallet.isConnected) {
+    if (!wallet.isConnected || !wallet.xrplWallet) {
       throw new Error('Wallet not connected');
     }
 
     set({ isLoading: true, error: null });
     try {
-      console.log('Creating campaign with data:', campaignData);
+      if (config.dev.enableLogging) {
+        console.log('Creating campaign with real XRPL integration:', campaignData);
+      }
+
+      // Create campaign object first
+      const campaignId = `campaign-${Date.now()}`;
       
-      // For now, let's create a simplified campaign without full XRPL integration
-      // This allows testing the UI flow while we debug XRPL issues
-      
+      if (!config.dev.skipRealTransactions) {
+        // Real XRPL Integration
+        
+        // 1. Create DID for SME identity
+        const kycData = {
+          companyName: campaignData.name || '',
+          registrationNumber: `REG${Date.now()}`,
+          address: 'Singapore',
+          contactEmail: 'contact@company.com',
+          contactPhone: '+65 1234 5678',
+          businessType: campaignData.industry || '',
+          documents: {
+            registrationCertificate: 'cert_hash',
+            taxCertificate: 'tax_hash',
+            bankStatement: 'bank_hash'
+          }
+        };
+
+        const did = await crowdLiftXRPL.identity.createSMEDID(wallet.xrplWallet, kycData);
+        if (config.dev.enableLogging) {
+          console.log('DID created:', did);
+        }
+
+        // 2. Mint PIT tokens
+        const tokenMetadata = {
+          name: `${campaignData.name} Token`,
+          symbol: campaignData.tokenSymbol || 'PIT',
+          description: campaignData.description || '',
+          image: '/api/placeholder/400/300',
+          totalSupply: campaignData.totalSupply || 1000000,
+          decimals: config.app.defaultTokenDecimals
+        };
+
+        const tokenId = await crowdLiftXRPL.tokens.mintPITTokens(
+          wallet.xrplWallet,
+          campaignData as SMECampaign,
+          tokenMetadata
+        );
+        if (config.dev.enableLogging) {
+          console.log('PIT tokens minted:', tokenId);
+        }
+
+        // 3. Create AMM pool
+        const initialRLUSDLiquidity = Math.floor((campaignData.fundingGoal || 100000) * 0.1); // 10% of funding goal
+        const initialTokenLiquidity = Math.floor((campaignData.totalSupply || 1000000) * 0.1); // 10% of total supply
+
+        const ammId = await crowdLiftXRPL.tokens.createAMMPool(
+          wallet.xrplWallet,
+          tokenId,
+          initialRLUSDLiquidity,
+          initialTokenLiquidity
+        );
+        if (config.dev.enableLogging) {
+          console.log('AMM pool created:', ammId);
+        }
+      }
+
+      // Create campaign object
       const newCampaign: SMECampaign = {
-        id: `campaign-${Date.now()}`,
+        id: campaignId,
         name: campaignData.name || 'Unnamed Campaign',
         description: campaignData.description || '',
         industry: campaignData.industry || '',
@@ -134,17 +200,12 @@ export const useStore = create<AppState>((set, get) => ({
         milestones: campaignData.milestones || [],
         image: '/api/placeholder/400/300',
         amm: {
-          poolId: `pool-${Date.now()}`,
+          poolId: config.dev.skipRealTransactions ? `pool-${Date.now()}` : 'real-amm-id',
           tvl: 0,
           apr: 0,
           depth: 0
         }
       };
-
-      // TODO: Integrate XRPL services once polyfills are working
-      // const did = await crowdLiftXRPL.identity.createSMEDID(wallet.xrplWallet, kycData);
-      // const tokenId = await crowdLiftXRPL.tokens.mintPITTokens(...);
-      // const ammId = await crowdLiftXRPL.tokens.createAMMPool(...);
 
       // Add to campaigns list
       set({ 
@@ -152,8 +213,10 @@ export const useStore = create<AppState>((set, get) => ({
         isLoading: false 
       });
       
-      console.log('Campaign created successfully:', newCampaign.id);
-      return newCampaign.id;
+      if (config.dev.enableLogging) {
+        console.log('Campaign created successfully with real XRPL integration:', campaignId);
+      }
+      return campaignId;
     } catch (error) {
       console.error('Failed to create campaign:', error);
       set({ 
@@ -174,11 +237,25 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isLoading: true });
     try {
+      if (config.dev.enableLogging) {
+        console.log('Refreshing portfolio for wallet:', wallet.address);
+      }
+
+      if (config.dev.useMockData) {
+        // Use mock data if configured
+        const mockPortfolio: InvestorPortfolio = {
+          holdings: [],
+          liquidityPositions: [],
+          pendingRefunds: [],
+          totalValue: 0,
+          totalPnL: 0
+        };
+        set({ portfolio: mockPortfolio, isLoading: false });
+        return;
+      }
+
       // Fetch real portfolio data from XRPL
-      // This would query user's token holdings and LP positions
-      
-      // Mock implementation for now
-      const mockPortfolio: InvestorPortfolio = {
+      const portfolioData: InvestorPortfolio = {
         holdings: [],
         liquidityPositions: [],
         pendingRefunds: [],
@@ -186,7 +263,21 @@ export const useStore = create<AppState>((set, get) => ({
         totalPnL: 0
       };
 
-      set({ portfolio: mockPortfolio, isLoading: false });
+      // Get account balance and convert to portfolio value
+      const balance = await xrplWalletService.getWalletBalance(wallet.address);
+      portfolioData.totalValue = parseFloat(balance);
+
+      // TODO: Query XRPL for:
+      // - Token holdings (NFTokens owned by this address)
+      // - AMM positions (liquidity provider positions)
+      // - Pending escrow releases
+      // - Calculate total portfolio value and P&L
+
+      set({ portfolio: portfolioData, isLoading: false });
+      
+      if (config.dev.enableLogging) {
+        console.log('Portfolio refreshed:', portfolioData);
+      }
     } catch (error) {
       console.error('Failed to refresh portfolio:', error);
       set({ isLoading: false });

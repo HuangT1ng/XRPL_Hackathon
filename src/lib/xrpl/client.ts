@@ -1,11 +1,17 @@
 import { Client, Wallet, dropsToXrp } from 'xrpl';
+import { config } from '../config';
 
 export class XRPLClient {
   private client: Client;
   private isConnected: boolean = false;
 
-  constructor(server: string = 'wss://s.altnet.rippletest.net:51233') {
-    this.client = new Client(server);
+  constructor(server?: string) {
+    const serverUrl = server || config.xrpl.server;
+    this.client = new Client(serverUrl);
+    
+    if (config.dev.enableLogging) {
+      console.log(`Initializing XRPL client with server: ${serverUrl}`);
+    }
   }
 
   async connect(): Promise<void> {

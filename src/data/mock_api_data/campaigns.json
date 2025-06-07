@@ -13,5 +13,21 @@
     "launchDate": "2025-06-11",
     "endDate": "2025-07-03",
     "createdAt": "2025-06-07T18:20:58.795Z"
+  },
+  {
+    "id": "campaign-1749322160392",
+    "companyName": "1213",
+    "industry": "Entertainment",
+    "description": "213",
+    "website": "123",
+    "name": "123",
+    "fundingGoal": 123,
+    "tokenSymbol": "789",
+    "tokenPrice": 1,
+    "totalSupply": 12,
+    "launchDate": "2025-06-06",
+    "endDate": "2025-06-19",
+    "founderAddress": "rns2B2B5JUHEriZpVDKDgfS5bF7QME1RBJ",
+    "createdAt": "2025-06-07T18:50:15.754Z"
   }
 ]

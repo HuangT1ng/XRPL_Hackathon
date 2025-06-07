@@ -18,7 +18,7 @@ export function SwapWidget({ tokenSymbol, tokenPrice, priceChange24h, onSwap }: 
   const [swapDirection, setSwapDirection] = useState<'buy' | 'sell'>('buy');
   const [amount, setAmount] = useState('');
   const [estimatedOutput, setEstimatedOutput] = useState('');
-  const { wallet } = useStore();
+  const { wallet, connectWallet } = useStore();
 
   const handleAmountChange = (value: string) => {
     setAmount(value);
@@ -35,6 +35,11 @@ export function SwapWidget({ tokenSymbol, tokenPrice, priceChange24h, onSwap }: 
   };
 
   const handleSwap = () => {
+    if (!wallet.isConnected) {
+      connectWallet();
+      return;
+    }
+    
     if (amount && estimatedOutput && onSwap) {
       const fromToken = swapDirection === 'buy' ? 'RLUSD' : tokenSymbol;
       const toToken = swapDirection === 'buy' ? tokenSymbol : 'RLUSD';
@@ -142,8 +147,9 @@ export function SwapWidget({ tokenSymbol, tokenPrice, priceChange24h, onSwap }: 
 
         <Button
           onClick={handleSwap}
-          disabled={!wallet.isConnected || !amount || !estimatedOutput}
-          className="w-full bg-primary-600 hover:bg-primary-700"
+          disabled={wallet.isConnected && (!amount || !estimatedOutput)}
+          variant="outline"
+          className="w-full"
         >
           {!wallet.isConnected 
             ? 'Connect Wallet' 

@@ -69,7 +69,7 @@ export function Landing() {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="mt-10 flex items-center justify-center gap-x-6"
             >
-              <Button asChild size="lg" className="bg-primary-600 hover:bg-primary-700">
+              <Button asChild variant="outline" size="lg">
                 <Link to="/onboard">
                   Launch Campaign
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -172,12 +172,12 @@ export function Landing() {
               CrowdLift provides the tools and security you need.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Button asChild size="lg" variant="secondary">
+              <Button asChild variant="outline" size="lg">
                 <Link to="/onboard">
                   Launch Campaign
                 </Link>
               </Button>
-              <Button asChild variant="ghost" size="lg" className="text-white hover:text-primary-600">
+              <Button asChild variant="outline" size="lg">
                 <Link to="/portfolio">
                   Start Investing
                 </Link>

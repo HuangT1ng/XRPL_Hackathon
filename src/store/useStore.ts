@@ -22,8 +22,6 @@ interface AppState {
   setPoolStats: (poolId: string, stats: PoolStats) => void;
   
   // UI State
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
   isLoading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -85,8 +83,6 @@ export const useStore = create<AppState>((set, get) => ({
   }),
   
   // UI State
-  isDarkMode: false,
-  toggleDarkMode: () => set({ isDarkMode: !get().isDarkMode }),
   isLoading: false,
   setLoading: (loading) => set({ isLoading: loading }),
 }));

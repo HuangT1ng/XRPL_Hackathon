@@ -10,7 +10,7 @@ import { mockPortfolio } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 
 export function Portfolio() {
-  const { portfolio, setPortfolio, wallet } = useStore();
+  const { portfolio, setPortfolio, wallet, connectWallet } = useStore();
 
   useEffect(() => {
     if (wallet.isConnected) {
@@ -23,10 +23,7 @@ export function Portfolio() {
       <div className="container mx-auto px-6 py-24">
         <div className="text-center max-w-md mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Portfolio</h1>
-          <p className="text-gray-600 mb-6">Connect your wallet to view your portfolio</p>
-          <Button className="bg-primary-600 hover:bg-primary-700">
-            Connect Wallet
-          </Button>
+          <p className="text-gray-600">Connect your wallet using the button in the header to view your portfolio</p>
         </div>
       </div>
     );
@@ -132,7 +129,7 @@ export function Portfolio() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle>Token Holdings</CardTitle>
-              <Button size="sm" className="bg-primary-600 hover:bg-primary-700">
+              <Button size="sm" variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
                 Buy Tokens
               </Button>
@@ -285,7 +282,7 @@ export function Portfolio() {
                     <Button 
                       size="sm" 
                       disabled={refund.status !== 'claimable'}
-                      className="bg-primary-600 hover:bg-primary-700"
+                      variant="outline"
                     >
                       {refund.status === 'claimable' ? 'Claim' : 'Pending'}
                     </Button>

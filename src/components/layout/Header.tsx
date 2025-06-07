@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Menu, X, Moon, Sun } from 'lucide-react';
+import { Wallet, Menu, X } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/store/useStore';
@@ -16,7 +16,7 @@ const navigation = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
-  const { wallet, connectWallet, disconnectWallet, isDarkMode, toggleDarkMode, isLoading } = useStore();
+  const { wallet, connectWallet, disconnectWallet, isLoading } = useStore();
 
   const handleWalletAction = () => {
     if (wallet.isConnected) {
@@ -57,8 +57,8 @@ export function Header() {
                 className={cn(
                   'text-sm font-semibold leading-6 transition-colors',
                   location.pathname === item.href
-                    ? 'text-primary-600'
-                    : 'text-gray-900 hover:text-primary-600'
+                    ? 'text-blue-600'
+                    : 'text-gray-900 hover:text-blue-600'
                 )}
               >
                 {item.name}
@@ -66,20 +66,11 @@ export function Header() {
             ))}
           </div>
           
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleDarkMode}
-              className="rounded-full"
-            >
-              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end">            
             <Button
               onClick={handleWalletAction}
               disabled={isLoading}
-              className="bg-primary-600 hover:bg-primary-700"
+              variant={wallet.isConnected ? 'success' : 'outline'}
             >
               <Wallet className="mr-2 h-4 w-4" />
               {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
@@ -144,8 +135,8 @@ export function Header() {
                           className={cn(
                             'block rounded-lg px-3 py-3 text-base font-semibold transition-colors',
                             location.pathname === item.href
-                              ? 'text-primary-600 bg-primary-50 border border-primary-200'
-                              : 'text-gray-900 hover:bg-gray-50 hover:text-primary-600'
+                              ? 'text-blue-600 bg-blue-50 border border-blue-200'
+                              : 'text-gray-900 hover:bg-gray-50 hover:text-blue-600'
                           )}
                           onClick={closeMobileMenu}
                         >
@@ -157,41 +148,19 @@ export function Header() {
                 </div>
                 
                 {/* Footer */}
-                <div className="border-t border-gray-200 px-6 py-6 space-y-4">
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="flex items-center justify-between"
+                <div className="border-t border-gray-200 px-6 py-6">
+                  <Button
+                    onClick={() => {
+                      handleWalletAction();
+                      closeMobileMenu();
+                    }}
+                    disabled={isLoading}
+                    variant={wallet.isConnected ? 'success' : 'outline'}
+                    className="w-full h-12"
                   >
-                    <span className="text-sm font-medium text-gray-700">Dark Mode</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={toggleDarkMode}
-                      className="rounded-full h-10 w-10"
-                    >
-                      {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                    </Button>
-                  </motion.div>
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    <Button
-                      onClick={() => {
-                        handleWalletAction();
-                        closeMobileMenu();
-                      }}
-                      disabled={isLoading}
-                      className="w-full bg-primary-600 hover:bg-primary-700 h-12"
-                    >
-                      <Wallet className="mr-2 h-4 w-4" />
-                      {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
-                    </Button>
-                  </motion.div>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
+                  </Button>
                 </div>
               </div>
             </motion.div>

@@ -110,7 +110,7 @@ export function CampaignCard({ campaign, index = 0 }: CampaignCardProps) {
         </CardContent>
 
         <CardFooter className="p-6 pt-0">
-          <Button asChild className="w-full bg-primary-600 hover:bg-primary-700">
+          <Button asChild variant="outline" className="w-full">
             <Link to={`/campaign/${campaign.id}`}>
               Invest Now
             </Link>

@@ -5,7 +5,7 @@ import { Landing } from '@/pages/Landing';
 import { CampaignDetail } from '@/pages/CampaignDetail';
 import { Portfolio } from '@/pages/Portfolio';
 import { Toaster } from '@/components/ui/sonner';
-import './App.css';
+import './css/App.css';
 
 function App() {
   return (

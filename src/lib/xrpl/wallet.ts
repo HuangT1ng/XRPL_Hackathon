@@ -1,6 +1,7 @@
 import { Wallet } from 'xrpl';
 import { xrplClient } from './client';
 import { config } from '../config';
+import { log } from '../logger';
 
 export interface WalletInfo {
   address: string;
@@ -17,14 +18,14 @@ export class XRPLWalletService {
   async createAndFundWallet(): Promise<WalletInfo> {
     try {
       if (config.dev.enableLogging) {
-        console.log('Creating new XRPL wallet...');
+        log.info('XRPL_WALLET', 'Creating new XRPL wallet...');
       }
 
       // Generate new wallet
       const wallet = Wallet.generate();
       
       if (config.dev.enableLogging) {
-        console.log(`Generated wallet: ${wallet.classicAddress}`);
+        log.info('XRPL_WALLET', `Generated wallet: ${wallet.classicAddress}`);
       }
 
       // Fund wallet on testnet
@@ -42,7 +43,7 @@ export class XRPLWalletService {
         wallet
       };
     } catch (error) {
-      console.error('Failed to create and fund wallet:', error);
+      log.error('XRPL_WALLET', 'Failed to create and fund wallet', { error });
       throw new Error(`Wallet creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
@@ -53,7 +54,7 @@ export class XRPLWalletService {
   async fundTestnetWallet(address: string): Promise<void> {
     try {
       if (config.dev.enableLogging) {
-        console.log(`Funding testnet wallet: ${address}`);
+        log.info('XRPL_WALLET', `Funding testnet wallet: ${address}`);
       }
 
       const response = await fetch(config.xrpl.faucetUrl, {
@@ -73,14 +74,14 @@ export class XRPLWalletService {
       const result = await response.json();
       
       if (config.dev.enableLogging) {
-        console.log('Faucet response:', result);
+        log.info('XRPL_WALLET', 'Faucet response', { result });
       }
 
       // Wait for funding to be processed
       await this.waitForFunding(address);
       
     } catch (error) {
-      console.error('Failed to fund testnet wallet:', error);
+      log.error('XRPL_WALLET', 'Failed to fund testnet wallet', { address, error });
       throw error;
     }
   }
@@ -94,7 +95,7 @@ export class XRPLWalletService {
         const balance = await this.getWalletBalance(address);
         if (parseFloat(balance) > 0) {
           if (config.dev.enableLogging) {
-            console.log(`Wallet funded successfully. Balance: ${balance} XRP`);
+            log.info('XRPL_WALLET', `Wallet funded successfully. Balance: ${balance} XRP`);
           }
           return;
         }
@@ -103,7 +104,7 @@ export class XRPLWalletService {
       }
 
       if (config.dev.enableLogging) {
-        console.log(`Waiting for funding... Attempt ${attempt}/${maxAttempts}`);
+        log.info('XRPL_WALLET', `Waiting for funding... Attempt ${attempt}/${maxAttempts}`);
       }
       
       // Wait 2 seconds before next attempt
@@ -121,7 +122,7 @@ export class XRPLWalletService {
       return await xrplClient.getAccountBalance(address);
     } catch (error) {
       if (config.dev.enableLogging) {
-        console.log(`Account ${address} not found or not activated yet`);
+        log.warn('XRPL_WALLET', `Account ${address} not found or not activated yet`);
       }
       return '0';
     }

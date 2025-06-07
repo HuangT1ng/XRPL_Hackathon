@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, Menu, X } from 'lucide-react';
+import { Wallet, Menu, X, KeyRound } from 'lucide-react';
 import { Logo } from '@/components/ui/logo';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/store/useStore';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const navigation = [
   { name: 'Discover', href: '/' },
@@ -15,6 +25,8 @@ const navigation = [
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [secretKey, setSecretKey] = useState('');
   const location = useLocation();
   const { wallet, connectWallet, disconnectWallet, isLoading } = useStore();
 
@@ -23,6 +35,14 @@ export function Header() {
       disconnectWallet();
     } else {
       connectWallet();
+    }
+  };
+
+  const handleImportWallet = () => {
+    if (secretKey) {
+      connectWallet(secretKey);
+      setImportDialogOpen(false);
+      setSecretKey('');
     }
   };
 
@@ -78,11 +98,56 @@ export function Header() {
               variant={wallet.isConnected ? 'destructive' : 'outline'}
             >
               <Wallet className="mr-2 h-4 w-4" />
-              {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}
+              {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Create Wallet'}
             </Button>
+            {!wallet.isConnected && (
+              <Button
+                onClick={() => setImportDialogOpen(true)}
+                disabled={isLoading}
+                variant="secondary"
+              >
+                <KeyRound className="mr-2 h-4 w-4" />
+                Import Wallet
+              </Button>
+            )}
           </div>
         </nav>
       </header>
+
+      {/* Import Wallet Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Import Wallet for Demo</DialogTitle>
+            <DialogDescription>
+              Enter the secret key of the wallet you want to use. This is for local development and demo purposes only.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="secret" className="text-right">
+                Secret Key
+              </Label>
+              <Input
+                id="secret"
+                value={secretKey}
+                onChange={(e) => setSecretKey(e.target.value)}
+                className="col-span-3"
+                placeholder="sEd..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="submit" 
+              onClick={handleImportWallet}
+              disabled={!secretKey || isLoading}
+            >
+              {isLoading ? 'Importing...' : 'Import Wallet'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile menu overlay */}
       <AnimatePresence mode="wait">

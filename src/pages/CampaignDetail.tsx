@@ -8,15 +8,29 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { SwapWidget } from '@/components/trading/SwapWidget';
 import { PriceChart } from '@/components/trading/PriceChart';
-import { MilestoneProgress } from '@/components/campaign/MilestoneProgress';
 import { useStore } from '@/store/useStore';
 import { useLivePoolStats } from '@/hooks/useLivePoolStats';
 import { mockCampaigns } from '@/data/mockData';
 
 export function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
-  const [campaign, setCampaign] = useState(mockCampaigns.find(c => c.id === id));
+  const { campaigns } = useStore();
+  
+  // Look for campaign in both store campaigns and mock campaigns
+  const [campaign, setCampaign] = useState(() => {
+    const storeCampaign = campaigns.find(c => c.id === id);
+    const mockCampaign = mockCampaigns.find(c => c.id === id);
+    return storeCampaign || mockCampaign;
+  });
+  
   const poolStats = useLivePoolStats(campaign?.amm.poolId || '');
+  
+  // Update campaign when store campaigns change
+  useEffect(() => {
+    const storeCampaign = campaigns.find(c => c.id === id);
+    const mockCampaign = mockCampaigns.find(c => c.id === id);
+    setCampaign(storeCampaign || mockCampaign);
+  }, [campaigns, id]);
 
   if (!campaign) {
     return (
@@ -92,22 +106,6 @@ export function CampaignDetail() {
               />
             </motion.div>
           )}
-
-          {/* Milestone Progress */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle>Milestone Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <MilestoneProgress milestones={campaign.milestones} />
-              </CardContent>
-            </Card>
-          </motion.div>
 
           {/* Campaign Stats */}
           <motion.div

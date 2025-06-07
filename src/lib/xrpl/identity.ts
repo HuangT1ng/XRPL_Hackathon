@@ -47,19 +47,26 @@ export class XRPLIdentityService {
         }]
       };
 
-      // Create DID transaction
-      const didTransaction = {
-        TransactionType: 'DIDSet',
+      // Create a hash of the KYC data to store on-chain
+      const kycHash = this.hashKYCData(kycData);
+      
+      // Create an AccountSet transaction to anchor the DID.
+      // We use a Memo to store the hash, as it's a standard field.
+      const accountSetTransaction = {
+        TransactionType: 'AccountSet' as const,
         Account: wallet.classicAddress,
-        DIDDocument: Buffer.from(JSON.stringify(didDocument)).toString('hex').toUpperCase(),
-        Data: Buffer.from(JSON.stringify({
-          kycHash: this.hashKYCData(kycData),
-          timestamp: Date.now(),
-          version: '1.0'
-        })).toString('hex').toUpperCase()
+        Memos: [
+          {
+            Memo: {
+              MemoType: Buffer.from('did:kyc', 'utf8').toString('hex').toUpperCase(),
+              MemoData: Buffer.from(kycHash, 'utf8').toString('hex').toUpperCase(),
+              MemoFormat: Buffer.from('text/plain', 'utf8').toString('hex').toUpperCase()
+            }
+          }
+        ]
       };
 
-      const result = await xrplClient.submitTransaction(didTransaction, wallet);
+      const result = await xrplClient.submitTransaction(accountSetTransaction, wallet);
       
       if (result.result.meta.TransactionResult === 'tesSUCCESS') {
         return `did:xrpl:${wallet.classicAddress}`;
@@ -115,28 +122,6 @@ export class XRPLIdentityService {
     return { score: finalScore, hash };
   }
 
-  async updateCreditScore(wallet: Wallet, did: string, scoreHash: string): Promise<boolean> {
-    try {
-      await xrplClient.connect();
-
-      const updateTransaction = {
-        TransactionType: 'DIDSet',
-        Account: wallet.classicAddress,
-        Data: Buffer.from(JSON.stringify({
-          creditScoreHash: scoreHash,
-          lastUpdated: Date.now(),
-          version: '1.1'
-        })).toString('hex').toUpperCase()
-      };
-
-      const result = await xrplClient.submitTransaction(updateTransaction, wallet);
-      return result.result.meta.TransactionResult === 'tesSUCCESS';
-    } catch (error) {
-      console.error('Error updating credit score:', error);
-      throw error;
-    }
-  }
-
   async verifyIdentityCredential(did: string, credential: any): Promise<boolean> {
     try {
       // Verify credential signature and validity
@@ -145,32 +130,6 @@ export class XRPLIdentityService {
     } catch (error) {
       console.error('Error verifying credential:', error);
       return false;
-    }
-  }
-
-  async getDIDDocument(address: string): Promise<any> {
-    try {
-      await xrplClient.connect();
-      
-      const response = await xrplClient.getClient().request({
-        command: 'account_objects',
-        account: address,
-        type: 'did'
-      });
-
-      if (response.result.account_objects.length > 0) {
-        const didObject = response.result.account_objects[0];
-        return {
-          did: `did:xrpl:${address}`,
-          document: JSON.parse(Buffer.from(didObject.DIDDocument, 'hex').toString()),
-          data: didObject.Data ? JSON.parse(Buffer.from(didObject.Data, 'hex').toString()) : null
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error getting DID document:', error);
-      throw error;
     }
   }
 

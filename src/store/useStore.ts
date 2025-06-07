@@ -5,11 +5,12 @@ import { crowdLiftXRPL } from '@/lib/xrpl';
 import { xrplWalletService } from '@/lib/xrpl/wallet';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
+import { issuerCampaigns } from '@/data/mockData';
 
 interface AppState {
   // Wallet
   wallet: WalletState & { xrplWallet?: Wallet };
-  connectWallet: () => Promise<void>;
+  connectWallet: (secret?: string) => Promise<void>;
   disconnectWallet: () => void;
   
   // Campaigns
@@ -54,16 +55,29 @@ export const useStore = create<AppState>((set, get) => ({
     network: 'testnet',
   },
   
-  connectWallet: async () => {
-    log.info('WALLET', 'Starting wallet connection process...');
+  connectWallet: async (secret) => {
+    if (secret) {
+      log.info('WALLET', 'Importing wallet from secret...');
+    } else {
+      log.info('WALLET', 'Starting new wallet creation process...');
+    }
     set({ isLoading: true, error: null });
     try {
-      log.debug('WALLET', 'Configuration check', { config: config.xrpl, dev: config.dev });
+      let walletInfo;
 
-      // Create and fund a real XRPL wallet
-      log.info('WALLET', 'Creating and funding real XRPL wallet...');
-      const walletInfo = await xrplWalletService.createAndFundWallet();
-      log.info('WALLET', 'Wallet created successfully', { address: walletInfo.address, balance: walletInfo.balance });
+      if (secret) {
+        // Import wallet from secret
+        walletInfo = xrplWalletService.importWallet(secret);
+        // We need to fetch the balance for an imported wallet
+        const balance = await xrplWalletService.getWalletBalance(walletInfo.address);
+        walletInfo.balance = balance;
+        log.info('WALLET', 'Wallet imported successfully', { address: walletInfo.address, balance: walletInfo.balance });
+      } else {
+        // Create and fund a new wallet
+        log.info('WALLET', 'Creating and funding real XRPL wallet...');
+        walletInfo = await xrplWalletService.createAndFundWallet();
+        log.info('WALLET', 'New wallet created successfully', { address: walletInfo.address, balance: walletInfo.balance });
+      }
       
       set({
         wallet: {
@@ -130,6 +144,13 @@ export const useStore = create<AppState>((set, get) => ({
 
     set({ isLoading: true, error: null });
     try {
+      const issuerSecret = config.secrets.issuerSecret;
+      if (!issuerSecret) {
+        throw new Error("VITE_ISSUER_SECRET is not set in the environment.");
+      }
+      const issuerWallet = Wallet.fromSecret(issuerSecret);
+      log.info('CAMPAIGN', `Using issuer wallet: ${issuerWallet.address}`);
+
       log.info('CAMPAIGN', 'Campaign creation started with config', { 
         skipRealTransactions: config.dev.skipRealTransactions,
         useMockData: config.dev.useMockData 
@@ -139,6 +160,8 @@ export const useStore = create<AppState>((set, get) => ({
       const campaignId = `campaign-${Date.now()}`;
       log.info('CAMPAIGN', `Generated campaign ID: ${campaignId}`);
       
+      let ammId: string | undefined;
+
       if (!config.dev.skipRealTransactions) {
         log.info('CAMPAIGN', 'Starting real XRPL transactions...');
         
@@ -160,41 +183,33 @@ export const useStore = create<AppState>((set, get) => ({
         log.debug('CAMPAIGN', 'KYC data prepared', kycData);
 
         try {
-          const did = await crowdLiftXRPL.identity.createSMEDID(wallet.xrplWallet, kycData);
+          const did = await crowdLiftXRPL.identity.createSMEDID(issuerWallet, kycData);
           log.info('CAMPAIGN', 'DID created successfully', { did });
         } catch (error) {
           log.error('CAMPAIGN', 'Failed to create DID', error);
           throw new Error(`DID creation failed: ${error}`);
         }
 
-        // 2. Mint PIT tokens
-        log.info('CAMPAIGN', 'Step 2: Minting PIT tokens');
-        const tokenMetadata = {
-          name: `${campaignData.name} Token`,
-          symbol: campaignData.tokenSymbol || 'PIT',
-          description: campaignData.description || '',
-          image: '/api/placeholder/400/300',
-          totalSupply: campaignData.totalSupply || 1000000,
-          decimals: config.app.defaultTokenDecimals
-        };
-        log.debug('CAMPAIGN', 'Token metadata prepared', tokenMetadata);
-
+        // 2. Issue fungible token
+        log.info('CAMPAIGN', 'Step 2: Issuing fungible token from issuer wallet');
+        let issuedTokenCurrency;
         try {
-          const tokenId = await crowdLiftXRPL.tokens.mintPITTokens(
-            wallet.xrplWallet,
-            campaignData as SMECampaign,
-            tokenMetadata
+          issuedTokenCurrency = await crowdLiftXRPL.tokens.issueFungibleToken(
+            issuerWallet,
+            campaignData.tokenSymbol || 'PIT',
+            campaignData.totalSupply || 1000000
           );
-          log.info('CAMPAIGN', 'PIT tokens minted successfully', { tokenId });
+          log.info('CAMPAIGN', 'Fungible token issued successfully', { currency: issuedTokenCurrency });
         } catch (error) {
-          log.error('CAMPAIGN', 'Failed to mint PIT tokens', error);
-          throw new Error(`Token minting failed: ${error}`);
+          log.error('CAMPAIGN', 'Failed to issue fungible token', error);
+          throw new Error(`Token issuance failed: ${error}`);
         }
 
         // 3. Create AMM pool
         log.info('CAMPAIGN', 'Step 3: Creating AMM pool');
         const initialRLUSDLiquidity = Math.floor((campaignData.fundingGoal || 100000) * 0.1);
         const initialTokenLiquidity = Math.floor((campaignData.totalSupply || 1000000) * 0.1);
+        
         log.debug('CAMPAIGN', 'AMM liquidity calculations', { 
           initialRLUSDLiquidity, 
           initialTokenLiquidity,
@@ -203,9 +218,9 @@ export const useStore = create<AppState>((set, get) => ({
         });
 
         try {
-          const ammId = await crowdLiftXRPL.tokens.createAMMPool(
-            wallet.xrplWallet,
-            'token-id-placeholder', // tokenId from step 2
+          ammId = await crowdLiftXRPL.tokens.createAMMPool(
+            issuerWallet,
+            issuedTokenCurrency,
             initialRLUSDLiquidity,
             initialTokenLiquidity
           );
@@ -220,6 +235,12 @@ export const useStore = create<AppState>((set, get) => ({
 
       // Create campaign object
       log.info('CAMPAIGN', 'Step 4: Creating campaign object');
+      const finalAmmId = config.dev.skipRealTransactions ? `pool-${Date.now()}` : ammId;
+      if (!finalAmmId) {
+        log.error('CAMPAIGN', 'AMM ID is missing after creation attempt.');
+        throw new Error('Could not retrieve AMM ID after creation.');
+      }
+      
       const newCampaign: SMECampaign = {
         id: campaignId,
         name: campaignData.name || 'Unnamed Campaign',
@@ -231,7 +252,7 @@ export const useStore = create<AppState>((set, get) => ({
         tokenPrice: campaignData.tokenPrice || 1,
         totalSupply: campaignData.totalSupply || 1000000,
         circulatingSupply: 0,
-        founderAddress: wallet.address || '',
+        founderAddress: issuerWallet.address,
         status: 'active',
         createdAt: new Date(),
         launchDate: campaignData.launchDate || new Date(),
@@ -239,7 +260,7 @@ export const useStore = create<AppState>((set, get) => ({
         milestones: campaignData.milestones || [],
         image: '/api/placeholder/400/300',
         amm: {
-          poolId: config.dev.skipRealTransactions ? `pool-${Date.now()}` : 'real-amm-id',
+          poolId: finalAmmId,
           tvl: 0,
           apr: 0,
           depth: 0

@@ -11,7 +11,7 @@ export class XRPLClient {
     this.client = new Client(serverUrl);
     
     if (config.dev.enableLogging) {
-      console.log(`Initializing XRPL client with server: ${serverUrl}`);
+      log.info('XRPL_CLIENT', `Initializing XRPL client with server: ${serverUrl}`);
     }
   }
 
@@ -19,7 +19,7 @@ export class XRPLClient {
     if (!this.isConnected) {
       await this.client.connect();
       this.isConnected = true;
-      console.log('Connected to XRPL');
+      log.info('XRPL_CLIENT', 'Connected to XRPL');
     }
   }
 
@@ -27,7 +27,7 @@ export class XRPLClient {
     if (this.isConnected) {
       await this.client.disconnect();
       this.isConnected = false;
-      console.log('Disconnected from XRPL');
+      log.info('XRPL_CLIENT', 'Disconnected from XRPL');
     }
   }
 
@@ -45,7 +45,7 @@ export class XRPLClient {
       });
       return response.result;
     } catch (error) {
-      console.error('Error getting account info:', error);
+      log.error('XRPL_CLIENT', 'Error getting account info', { address, error });
       throw error;
     }
   }
@@ -64,10 +64,24 @@ export class XRPLClient {
         account: transaction.Account 
       });
       
+      // Get current ledger info first
+      const ledgerResponse = await this.client.request({
+        command: 'ledger',
+        ledger_index: 'validated'
+      });
+      const currentLedger = ledgerResponse.result.ledger_index;
+      
+      // Autofill the transaction
       const prepared = await this.client.autofill(transaction);
       
-      log.debug('XRPL_CLIENT', 'Transaction autofilled', {
-        lastLedgerSequence: prepared.LastLedgerSequence,
+      // Override LastLedgerSequence with a safer value
+      const saferLastLedger = currentLedger + (config.app.ledgerOffset || 20);
+      prepared.LastLedgerSequence = saferLastLedger;
+      
+      log.debug('XRPL_CLIENT', 'Transaction prepared with safer LastLedgerSequence', {
+        currentLedger,
+        originalLastLedger: prepared.LastLedgerSequence,
+        saferLastLedger,
         fee: prepared.Fee,
         sequence: prepared.Sequence
       });
@@ -75,14 +89,26 @@ export class XRPLClient {
       const signed = wallet.sign(prepared);
       
       log.info('XRPL_CLIENT', 'Submitting transaction to XRPL...');
-      const result = await this.client.submitAndWait(signed.tx_blob);
       
-      log.info('XRPL_CLIENT', 'Transaction successful', { 
-        hash: result.result.hash,
-        validated: result.result.validated 
+      // Use submit() with timeout instead of submitAndWait()
+      const submitResult = await this.client.submit(signed.tx_blob);
+      
+      if (!submitResult.result || submitResult.result.engine_result !== 'tesSUCCESS') {
+        throw new Error(`Transaction submission failed: ${submitResult.result?.engine_result || 'Unknown error'}`);
+      }
+      
+      const txHash = submitResult.result.tx_json.hash;
+      log.info('XRPL_CLIENT', 'Transaction submitted successfully, waiting for validation...', { hash: txHash });
+      
+      // Wait for validation with timeout
+      const result = await this.waitForValidation(txHash, 60000); // 60 second timeout
+      
+      log.info('XRPL_CLIENT', 'Transaction validated successfully', { 
+        hash: txHash,
+        validated: true 
       });
       
-      return result;
+      return { result: { hash: txHash, validated: true, ...result } };
     } catch (error: any) {
       log.error('XRPL_CLIENT', 'Transaction failed', {
         error: error.message,

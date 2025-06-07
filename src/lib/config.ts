@@ -33,6 +33,7 @@ export const config = {
     transactionTimeout: 30000, // 30 seconds
     priceUpdateInterval: 5000, // 5 seconds
     portfolioRefreshInterval: 10000, // 10 seconds
+    ledgerOffset: parseInt(import.meta.env.VITE_LEDGER_OFFSET || '20'), // Add ledgers to LastLedgerSequence for safety
   },
   
   // Safety Fund Configuration
@@ -40,6 +41,12 @@ export const config = {
     feePercentage: 10, // 10% of trading fees
     minimumThreshold: 1000, // Minimum balance in RLUSD
     emergencyContactAddress: import.meta.env.VITE_EMERGENCY_CONTACT || '',
+  },
+  
+  // Secrets from .env
+  secrets: {
+    issuerSecret: import.meta.env.VITE_ISSUER_SECRET || '',
+    fundingSecret: import.meta.env.VITE_FUNDING_SECRET || '',
   },
   
   // Development flags

@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CampaignCard } from '@/components/campaign/CampaignCard';
 import { useStore } from '@/store/useStore';
-import { mockCampaigns } from '@/data/mockData';
+import { xrplCampaignService } from '@/lib/xrpl/campaigns';
+import { config } from '@/lib/config';
 
 const features = [
   {
@@ -32,10 +33,18 @@ const features = [
 
 export function Landing() {
   const { setCampaigns, campaigns, wallet, connectWallet, isLoading } = useStore();
+  const ISSUER_ADDRESS = 'rP9g3QyYkGZUvB9k2v6so7qA3iF4b1Bw8X';
 
   useEffect(() => {
-    setCampaigns(mockCampaigns);
-  }, [setCampaigns]);
+    const fetchCampaigns = async () => {
+      const onChainCampaigns = await xrplCampaignService.getIssuerCampaigns(ISSUER_ADDRESS);
+      setCampaigns(onChainCampaigns);
+    };
+
+    if (campaigns.length === 0) {
+      fetchCampaigns();
+    }
+  }, [setCampaigns, campaigns.length]);
 
   return (
     <div className="flex-1">
@@ -71,7 +80,7 @@ export function Landing() {
             >
               {!wallet.isConnected ? (
                 <Button 
-                  onClick={connectWallet} 
+                  onClick={() => connectWallet()} 
                   disabled={isLoading}
                   size="lg"
                   className="bg-primary-600 hover:bg-primary-700 text-white"
@@ -165,7 +174,7 @@ export function Landing() {
           
           <div className="mt-12 text-center">
             <Button asChild variant="outline" size="lg">
-              <Link to="/discover">
+              <Link to="/portfolio">
                 View All Campaigns
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

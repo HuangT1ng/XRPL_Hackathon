@@ -26,14 +26,6 @@ interface CampaignData {
   tokenPrice: number;
   totalSupply: number;
   
-  // Milestones
-  milestones: {
-    title: string;
-    description: string;
-    targetDate: string;
-    fundingPercentage: number;
-  }[];
-  
   // Timeline
   launchDate: string;
   endDate: string;
@@ -43,7 +35,6 @@ const STEPS = [
   { id: 'company', title: 'Company Info', icon: Building },
   { id: 'campaign', title: 'Campaign Details', icon: Target },
   { id: 'tokenomics', title: 'Tokenomics', icon: Coins },
-  { id: 'milestones', title: 'Milestones', icon: Calendar },
   { id: 'review', title: 'Review & Launch', icon: Check }
 ];
 
@@ -66,42 +57,12 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
     tokenSymbol: '',
     tokenPrice: 0,
     totalSupply: 0,
-    milestones: [
-      { title: '', description: '', targetDate: '', fundingPercentage: 25 },
-      { title: '', description: '', targetDate: '', fundingPercentage: 50 },
-      { title: '', description: '', targetDate: '', fundingPercentage: 25 }
-    ],
     launchDate: '',
     endDate: ''
   });
 
   const updateCampaignData = (field: string, value: any) => {
     setCampaignData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const updateMilestone = (index: number, field: string, value: any) => {
-    setCampaignData(prev => ({
-      ...prev,
-      milestones: prev.milestones.map((milestone, i) => 
-        i === index ? { ...milestone, [field]: value } : milestone
-      )
-    }));
-  };
-
-  const addMilestone = () => {
-    setCampaignData(prev => ({
-      ...prev,
-      milestones: [...prev.milestones, { title: '', description: '', targetDate: '', fundingPercentage: 0 }]
-    }));
-  };
-
-  const removeMilestone = (index: number) => {
-    if (campaignData.milestones.length > 1) {
-      setCampaignData(prev => ({
-        ...prev,
-        milestones: prev.milestones.filter((_, i) => i !== index)
-      }));
-    }
   };
 
   const validateStep = (step: number): boolean => {
@@ -112,8 +73,6 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
         return !!(campaignData.name && campaignData.fundingGoal > 0);
       case 2: // Tokenomics
         return !!(campaignData.tokenSymbol && campaignData.tokenPrice > 0 && campaignData.totalSupply > 0);
-      case 3: // Milestones
-        return campaignData.milestones.every(m => m.title && m.description && m.targetDate && m.fundingPercentage > 0);
       default:
         return true;
     }
@@ -154,16 +113,7 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
         tokenSymbol: campaignData.tokenSymbol,
         tokenPrice: campaignData.tokenPrice,
         totalSupply: campaignData.totalSupply,
-        milestones: campaignData.milestones.map((m, index) => ({
-          id: `${campaignData.name.toLowerCase().replace(/\s+/g, '-')}-milestone-${index + 1}`,
-          title: m.title,
-          description: m.description,
-          targetDate: new Date(m.targetDate),
-          fundingPercentage: m.fundingPercentage,
-          status: 'pending' as const,
-          proofDocuments: [],
-          escrowAmount: (campaignData.fundingGoal * m.fundingPercentage) / 100
-        })),
+        milestones: [],
         launchDate: new Date(campaignData.launchDate),
         endDate: new Date(campaignData.endDate),
         status: 'active' as const,
@@ -342,88 +292,7 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
           </div>
         );
 
-      case 3: // Milestones
-        return (
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Campaign Milestones</h3>
-              <Button onClick={addMilestone} variant="outline" size="sm">
-                Add Milestone
-              </Button>
-            </div>
-            
-            {campaignData.milestones.map((milestone, index) => (
-              <Card key={index}>
-                <CardContent className="pt-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <h4 className="font-medium">Milestone {index + 1}</h4>
-                      {campaignData.milestones.length > 1 && (
-                        <Button 
-                          onClick={() => removeMilestone(index)} 
-                          variant="ghost" 
-                          size="sm"
-                        >
-                          Remove
-                        </Button>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-2">
-                        <Label>Title *</Label>
-                        <Input
-                          value={milestone.title}
-                          onChange={(e) => updateMilestone(index, 'title', e.target.value)}
-                          placeholder="Milestone title"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label>Target Date *</Label>
-                        <Input
-                          type="date"
-                          value={milestone.targetDate}
-                          onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Description *</Label>
-                      <Textarea
-                        value={milestone.description}
-                        onChange={(e) => updateMilestone(index, 'description', e.target.value)}
-                        placeholder="Describe what needs to be achieved..."
-                        rows={2}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label>Funding Release (%) *</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={milestone.fundingPercentage}
-                        onChange={(e) => updateMilestone(index, 'fundingPercentage', Number(e.target.value))}
-                        placeholder="25"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
-              <p className="text-sm text-blue-700">
-                Total funding release: {campaignData.milestones.reduce((sum, m) => sum + m.fundingPercentage, 0)}%
-              </p>
-            </div>
-          </div>
-        );
-
-      case 4: // Review
+      case 3: // Review
         return (
           <div className="space-y-6">
             <h3 className="text-lg font-medium">Review Your Campaign</h3>
@@ -462,20 +331,6 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
                     <span>Token:</span>
                     <span>{campaignData.tokenSymbol} @ ${campaignData.tokenPrice}</span>
                   </div>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Milestones ({campaignData.milestones.length})</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2 text-sm">
-                  {campaignData.milestones.map((milestone, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{milestone.title}</span>
-                      <span>{milestone.fundingPercentage}%</span>
-                    </div>
-                  ))}
                 </CardContent>
               </Card>
             </div>

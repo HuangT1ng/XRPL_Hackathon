@@ -6,8 +6,10 @@ import { CampaignDetail } from '@/pages/CampaignDetail';
 import { Portfolio } from '@/pages/Portfolio';
 import { CampaignOnboard } from '@/pages/CampaignOnboard';
 import { TestXRPL } from '@/pages/TestXRPL';
+import { SupportCampaign } from '@/pages/SupportCampaign';
 import DebugPage from '@/pages/DebugPage';
 import { Toaster } from '@/components/ui/sonner';
+import { BrowseCampaigns } from '@/pages/BrowseCampaigns';
 import './css/App.css';
 
 function App() {
@@ -18,7 +20,9 @@ function App() {
         <main className="flex-1">
           <Routes>
             <Route path="/" element={<Landing />} />
+            <Route path="/campaigns" element={<BrowseCampaigns />} />
             <Route path="/campaign/:id" element={<CampaignDetail />} />
+            <Route path="/campaign/:id/support" element={<SupportCampaign />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/onboard" element={<CampaignOnboard />} />
             <Route path="/test" element={<TestXRPL />} />

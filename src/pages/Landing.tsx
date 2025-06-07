@@ -3,15 +3,14 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Shield, TrendingUp, Users, Zap, Wallet } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { CampaignCard } from '@/components/campaign/CampaignCard';
 import { useStore } from '@/store/useStore';
 import { crowdLiftXRPL } from '@/lib/xrpl';
 
 const features = [
   {
     icon: Shield,
-    title: 'Milestone-Based Security',
-    description: 'Funds are released in tranches based on verified milestone completion, protecting investor interests.',
+    title: 'AI Based KYC',
+    description: 'KYC is done via AI, ensuring that only legitimate businesses can participate.',
   },
   {
     icon: TrendingUp,
@@ -27,6 +26,50 @@ const features = [
     icon: Zap,
     title: 'Real-Time Transparency',
     description: 'Track milestone progress, funding status, and escrow releases in real-time on XRPL.',
+  },
+];
+
+// Mock campaign data for beautiful cards
+const mockCampaigns = [
+  {
+    id: '1',
+    name: 'GreenBrew Coffee Expansion',
+    industry: 'Food & Beverage',
+    description: 'Raising funds to open 5 new eco-friendly coffee shops in Singapore.',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80',
+    fundingGoal: 100000,
+    currentFunding: 65000,
+    founder: 'Eco Ventures',
+  },
+  {
+    id: '2',
+    name: 'MedTech AI Diagnostics',
+    industry: 'Healthcare',
+    description: 'AI-powered diagnostics for faster, more accurate patient care.',
+    image: 'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=400&q=80',
+    fundingGoal: 200000,
+    currentFunding: 120000,
+    founder: 'HealthNext',
+  },
+  {
+    id: '3',
+    name: 'EduSpark Learning Platform',
+    industry: 'Education',
+    description: 'Interactive online platform making STEM fun for kids.',
+    image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=400&q=80',
+    fundingGoal: 50000,
+    currentFunding: 42000,
+    founder: 'SparkEd',
+  },
+  {
+    id: '4',
+    name: 'UrbanSmart Mobility',
+    industry: 'Technology',
+    description: 'Smart e-scooter sharing for urban commuters.',
+    image: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=400&q=80',
+    fundingGoal: 150000,
+    currentFunding: 90000,
+    founder: 'UrbanSmart',
   },
 ];
 
@@ -67,132 +110,111 @@ export function Landing() {
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-primary-50 w-full">
-        <div className="w-full px-0 py-24 sm:py-32 lg:px-0">
-          <div className="w-full text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
-            >
-              Democratize Pre-IPO
-              <span className="bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent"> Investments</span>
-            </motion.h1>
-            
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="mt-6 text-lg leading-8 text-gray-600"
-            >
-              CrowdLift enables SMEs to tokenize fundraising campaigns with milestone-based escrows on XRPL. 
-              Investors can trade PIT tokens, provide liquidity, and track progress in real-time.
-            </motion.p>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-              className="mt-10 flex items-center justify-center gap-x-6"
-            >
-              {!wallet.isConnected ? (
-                <Button 
-                  onClick={connectWallet} 
-                  disabled={isLoading}
-                  size="lg"
-                  className="bg-primary-600 hover:bg-primary-700 text-black"
-                >
-                  <Wallet className="mr-2 h-4 w-4" />
-                  {isLoading ? 'Connecting...' : 'Connect Wallet'}
-                </Button>
-              ) : (
-                <>
-                  <Button asChild variant="outline" size="lg">
-                    <Link to="/onboard">
-                      Launch Campaign
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <Button asChild variant="outline" size="lg">
-                    <Link to="/portfolio">
-                      View Portfolio
-                    </Link>
-                  </Button>
-                </>
-              )}
-            </motion.div>
-          </div>
+      <section className="relative bg-gradient-to-br from-primary-50 via-white to-primary-100 w-full overflow-hidden">
+        <div className="w-full px-4 py-20 sm:py-28 flex flex-col items-center relative z-10">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="text-5xl sm:text-7xl font-extrabold text-gray-900 text-center mb-4"
+          >
+            Democratize
+            <br /> Pre-IPO Investments
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="mt-4 text-xl sm:text-2xl text-gray-600 max-w-2xl text-center"
+          >
+            CrowdLift enables SMEs to tokenize fundraising campaigns with tokens on XRPL. Investors can trade PIT tokens, provide liquidity, and track progress in real-time.
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="mt-10 flex items-center justify-center gap-x-6"
+          >
+          </motion.div>
         </div>
-        
-        {/* Background decoration */}
-        <div className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]">
-          <div
-            className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-primary-300 to-primary-600 opacity-20 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"
-            style={{
-              clipPath: 'polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)',
-            }}
-          />
-        </div>
+        {/* Decorative background blob */}
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[80vw] h-[40vw] bg-gradient-to-tr from-primary-200 via-primary-100 to-white rounded-full blur-3xl opacity-40 z-0" />
       </section>
 
       {/* Features Section */}
-      <section className="py-24 sm:py-32 w-full">
-        <div className="w-full lg:px-0">
-          <div className="w-full text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Why Choose CrowdLift?
-            </h2>
-            <p className="mt-4 text-lg leading-8 text-gray-600">
+      <section className="py-12 w-full bg-white">
+        <div className="w-full px-4 max-w-6xl mx-auto">
+          <div className="w-full text-center mb-10">
+            <h2 className="text-4xl font-bold tracking-tight text-gray-900 mb-2">Why Choose CrowdLift?</h2>
+            <p className="text-lg leading-8 text-gray-600">
               Built on XRPL for security, transparency, and liquidity
             </p>
           </div>
-          
-          <div className="w-full mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <dl className="grid w-full grid-cols-1 gap-x-8 gap-y-16 lg:grid-cols-2 xl:grid-cols-4">
-              {features.map((feature, index) => (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="flex flex-col"
-                >
-                  <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
-                    <feature.icon className="h-5 w-5 flex-none text-primary-600" aria-hidden="true" />
-                    {feature.title}
-                  </dt>
-                  <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
-                    <p className="flex-auto">{feature.description}</p>
-                  </dd>
-                </motion.div>
-              ))}
-            </dl>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            {features.map((feature, index) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-primary-50 rounded-2xl shadow p-6 flex flex-col items-center text-center hover:shadow-lg transition-shadow"
+              >
+                <feature.icon className="h-8 w-8 text-primary-600 mb-3" aria-hidden="true" />
+                <h3 className="font-semibold text-lg mb-2">{feature.title}</h3>
+                <p className="text-gray-600 text-sm">{feature.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Featured Campaigns Section */}
-      <section className="bg-gray-50 py-24 sm:py-32 w-full">
-        <div className="w-full lg:px-0">
-          <div className="w-full text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Featured Campaigns
-            </h2>
-            <p className="mt-4 text-lg leading-8 text-gray-600">
+      <section className="bg-gradient-to-br from-primary-50 via-white to-primary-100 py-16 w-full">
+        <div className="w-full px-4 max-w-6xl mx-auto">
+          <div className="w-full text-center mb-10">
+            <h2 className="text-4xl font-bold tracking-tight text-gray-900 mb-2">Featured Campaigns</h2>
+            <p className="text-lg leading-8 text-gray-600">
               Discover innovative SMEs raising capital through tokenization
             </p>
           </div>
-          
-          <div className="mt-16 grid grid-cols-1 gap-8 sm:mt-20 lg:grid-cols-3 w-full">
-            {campaigns.slice(0, 3).map((campaign, index) => (
-              <CampaignCard key={campaign.id} campaign={campaign} index={index} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {mockCampaigns.slice(0, 3).map((campaign, index) => (
+              <motion.div
+                key={campaign.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-shadow p-0 flex flex-col overflow-hidden border border-gray-100"
+              >
+                <img src={campaign.image} alt={campaign.name} className="h-48 w-full object-cover" />
+                <div className="p-6 flex flex-col flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-xs bg-primary-100 text-primary-700 rounded px-2 py-1 font-semibold">{campaign.industry}</span>
+                  </div>
+                  <h3 className="font-bold text-xl mb-1 text-gray-900">{campaign.name}</h3>
+                  <p className="text-gray-600 text-sm mb-4 flex-1">{campaign.description}</p>
+                  <div className="mb-4">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-black h-2 rounded-full transition-all"
+                        style={{ width: `${(campaign.currentFunding / campaign.fundingGoal) * 100}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>${campaign.currentFunding.toLocaleString()} raised</span>
+                      <span>Goal: ${campaign.fundingGoal.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <Button asChild className="mt-auto w-full bg-black text-white hover:bg-gray-900 hover:text-white border-none shadow-lg transition-all duration-200" variant="outline">
+                    <Link to={`/campaign/${campaign.id}`}>View Details</Link>
+                  </Button>
+                </div>
+              </motion.div>
             ))}
           </div>
-          
-          <div className="mt-12 text-center w-full">
+          <div className="mt-10 text-center">
             <Button asChild variant="outline" size="lg">
-              <Link to="/discover">
+              <Link to="/discover" className="text-black">
                 View All Campaigns
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -202,28 +224,22 @@ export function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary-600 w-full">
-        <div className="px-0 py-24 sm:px-0 sm:py-32 lg:px-0 w-full">
-          <div className="w-full text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Ready to Start Your Journey?
-            </h2>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-primary-100">
-              Whether you're an SME looking to raise capital or an investor seeking pre-IPO opportunities, 
-              CrowdLift provides the tools and security you need.
-            </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
-              <Button asChild variant="outline" size="lg">
-                <Link to="/onboard">
-                  Launch Campaign
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link to="/portfolio">
-                  Start Investing
-                </Link>
-              </Button>
-            </div>
+      <section className="w-full py-12 bg-white">
+        <div className="w-full px-4 flex flex-col items-center text-center">
+          <p className="text-2xl text-gray-700 mb-6 max-w-2xl">
+            Whether you're an SME looking to raise capital or an investor seeking pre-IPO opportunities, CrowdLift provides the tools and security you need.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button asChild variant="outline" size="lg">
+              <Link to="/onboard" className="text-black">
+                Launch Campaign
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link to="/portfolio" className="text-black">
+                Start Investing
+              </Link>
+            </Button>
           </div>
         </div>
       </section>

@@ -58,7 +58,7 @@ export function Portfolio() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                ${portfolio.totalValue.toLocaleString()}
+                ${ (Math.floor(Number(portfolio.totalValue) * 100) / 100).toFixed(2) }
               </div>
               <div className={cn(
                 'flex items-center mt-1 text-sm',

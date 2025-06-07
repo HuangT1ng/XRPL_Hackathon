@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ExternalLink, TrendingUp, Users, Clock, Target } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, Users, Clock, Target, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +39,8 @@ export function CampaignDetail() {
     return (
       <div className="w-full px-0 py-24">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Campaign Details</h1>
-          <p className="text-gray-600">Connect your wallet to view campaign details</p>
+          <h1 className="text-2xl font-bold text-black mb-4">Campaign Details</h1>
+          <p className="text-black/70">Connect your wallet to view campaign details</p>
         </div>
       </div>
     );
@@ -50,7 +50,7 @@ export function CampaignDetail() {
     return (
       <div className="w-full px-0 py-24">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading Campaign Details...</h1>
+          <h1 className="text-2xl font-bold text-black">Loading Campaign Details...</h1>
         </div>
       </div>
     );
@@ -200,33 +200,31 @@ export function CampaignDetail() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Funding Progress</span>
+                    <span className="text-gray-600">Funding Goal</span>
+                    <span className="font-medium">${campaign.fundingGoal.toLocaleString()} RLUSD</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Current Funding</span>
+                    <span className="font-medium">${campaign.currentFunding.toLocaleString()} RLUSD</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Progress</span>
                     <span className="font-medium">{fundingPercentage.toFixed(1)}%</span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary-600 transition-all duration-300"
-                      style={{ width: `${Math.min(100, fundingPercentage)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>${campaign.currentFunding.toLocaleString()}</span>
-                    <span>${campaign.fundingGoal.toLocaleString()}</span>
                   </div>
                 </div>
 
                 <Separator />
 
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Launch Date</span>
-                    <span className="font-medium">{campaign.launchDate.toLocaleDateString()}</span>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Token Symbol</span>
+                    <span className="font-medium">{campaign.tokenSymbol}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">End Date</span>
-                    <span className="font-medium">{campaign.endDate.toLocaleDateString()}</span>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Token Price</span>
+                    <span className="font-medium">${campaign.tokenPrice} RLUSD</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Total Supply</span>
                     <span className="font-medium">{campaign.totalSupply.toLocaleString()}</span>
                   </div>
@@ -234,11 +232,26 @@ export function CampaignDetail() {
 
                 <Separator />
 
-                <Button asChild variant="outline" className="w-full">
-                  <a href="#" target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    View on XRPL Explorer
-                  </a>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Founder</span>
+                    <span className="font-medium">{campaign.founderAddress.slice(0, 6)}...{campaign.founderAddress.slice(-4)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Launch Date</span>
+                    <span className="font-medium">{new Date(campaign.launchDate).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">End Date</span>
+                    <span className="font-medium">{new Date(campaign.endDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+
+                <Button asChild className="w-full mt-4">
+                  <Link to={`/campaign/${id}/support`}>
+                    <Heart className="mr-2 h-4 w-4" />
+                    Support Campaign
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

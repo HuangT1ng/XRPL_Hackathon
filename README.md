@@ -22,6 +22,62 @@ CrowdLift v2 is a modern crowdfunding platform for SMEs, built on the XRP Ledger
 - **Safety Fund**: 10% of trading fees fund community protection
 - **Real-Time Transparency**: All activities tracked on XRPL
 
+## 🏗️ Folder Structure
+
+```
+src/
+├── components/
+│   ├── campaign/
+│   │   ├── CampaignCard.tsx
+│   │   └── CampaignCreationWizard.tsx
+│   ├── trading/
+│   │   ├── SwapWidget.tsx
+│   │   └── PriceChart.tsx
+│   ├── layout/
+│   │   ├── Header.tsx
+│   │   └── Footer.tsx
+│   ├── kyc/
+│   │   └── ai_verifier.js
+│   └── ui/           # Reusable UI components (Button, Card, etc.)
+├── pages/
+│   ├── BrowseCampaigns.tsx
+│   ├── CampaignDetail.tsx
+│   ├── CampaignOnboard.tsx
+│   ├── CreateCampaign.tsx
+│   ├── Landing.tsx
+│   ├── Portfolio.tsx
+│   ├── SupportCampaign.tsx
+│   ├── DebugPage.tsx
+│   └── TestXRPL.tsx
+├── lib/
+│   └── xrpl/
+│       ├── campaigns.ts
+│       ├── client.ts
+│       ├── identity.ts
+│       ├── tokens.ts
+│       ├── trading.ts
+│       ├── wallet.ts
+│       ├── watchtower.ts
+│       ├── milestones.ts
+│       ├── sendXRPAndTokens.ts
+│       └── utils.ts
+├── store/
+│   └── useStore.ts
+├── types/
+│   └── index.ts
+├── data/
+│   ├── mockdata.json
+│   └── mockData.ts
+├── hooks/
+│   ├── useLivePoolStats.ts
+│   └── use-toast.ts
+├── css/
+│   └── ...
+├── App.tsx
+├── main.tsx
+└── vite-env.d.ts
+```
+
 ## 🏗️ Architecture
 
 ### Frontend (React + TypeScript)

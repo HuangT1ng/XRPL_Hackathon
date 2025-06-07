@@ -6,6 +6,7 @@ import { CampaignDetail } from '@/pages/CampaignDetail';
 import { Portfolio } from '@/pages/Portfolio';
 import { CampaignOnboard } from '@/pages/CampaignOnboard';
 import { TestXRPL } from '@/pages/TestXRPL';
+import DebugPage from '@/pages/DebugPage';
 import { Toaster } from '@/components/ui/sonner';
 import './css/App.css';
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/onboard" element={<CampaignOnboard />} />
             <Route path="/test" element={<TestXRPL />} />
+            <Route path="/debug" element={<DebugPage />} />
           </Routes>
         </main>
         <Footer />

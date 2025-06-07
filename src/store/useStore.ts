@@ -4,6 +4,7 @@ import { WalletState, SMECampaign, InvestorPortfolio, PoolStats } from '@/types'
 import { crowdLiftXRPL } from '@/lib/xrpl';
 import { xrplWalletService } from '@/lib/xrpl/wallet';
 import { config } from '@/lib/config';
+import { log } from '@/lib/logger';
 
 interface AppState {
   // Wallet
@@ -54,14 +55,15 @@ export const useStore = create<AppState>((set, get) => ({
   },
   
   connectWallet: async () => {
+    log.info('WALLET', 'Starting wallet connection process...');
     set({ isLoading: true, error: null });
     try {
-      if (config.dev.enableLogging) {
-        console.log('Creating and funding real XRPL wallet...');
-      }
+      log.debug('WALLET', 'Configuration check', { config: config.xrpl, dev: config.dev });
 
       // Create and fund a real XRPL wallet
+      log.info('WALLET', 'Creating and funding real XRPL wallet...');
       const walletInfo = await xrplWalletService.createAndFundWallet();
+      log.info('WALLET', 'Wallet created successfully', { address: walletInfo.address, balance: walletInfo.balance });
       
       set({
         wallet: {
@@ -75,14 +77,12 @@ export const useStore = create<AppState>((set, get) => ({
       });
 
       // Initialize XRPL services
+      log.info('WALLET', 'Initializing XRPL services...');
       await crowdLiftXRPL.initialize();
-      
-      if (config.dev.enableLogging) {
-        console.log(`Wallet connected successfully: ${walletInfo.address} with ${walletInfo.balance} XRP`);
-      }
+      log.info('WALLET', 'XRPL services initialized successfully');
       
     } catch (error) {
-      console.error('Failed to connect wallet:', error);
+      log.error('WALLET', 'Failed to connect wallet', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to connect wallet',
         isLoading: false 
@@ -109,24 +109,41 @@ export const useStore = create<AppState>((set, get) => ({
   setSelectedCampaign: (campaign) => set({ selectedCampaign: campaign }),
   
   createCampaign: async (campaignData) => {
+    log.info('CAMPAIGN', '=== STARTING CAMPAIGN CREATION ===');
+    log.debug('CAMPAIGN', 'Input campaign data', campaignData);
+    
     const { wallet, campaigns } = get();
+    log.debug('CAMPAIGN', 'Current state check', { 
+      walletConnected: wallet.isConnected, 
+      hasXRPLWallet: !!wallet.xrplWallet,
+      walletAddress: wallet.address,
+      campaignsCount: campaigns.length 
+    });
+    
     if (!wallet.isConnected || !wallet.xrplWallet) {
+      log.error('CAMPAIGN', 'Wallet not connected properly', { 
+        isConnected: wallet.isConnected, 
+        hasXRPLWallet: !!wallet.xrplWallet 
+      });
       throw new Error('Wallet not connected');
     }
 
     set({ isLoading: true, error: null });
     try {
-      if (config.dev.enableLogging) {
-        console.log('Creating campaign with real XRPL integration:', campaignData);
-      }
+      log.info('CAMPAIGN', 'Campaign creation started with config', { 
+        skipRealTransactions: config.dev.skipRealTransactions,
+        useMockData: config.dev.useMockData 
+      });
 
       // Create campaign object first
       const campaignId = `campaign-${Date.now()}`;
+      log.info('CAMPAIGN', `Generated campaign ID: ${campaignId}`);
       
       if (!config.dev.skipRealTransactions) {
-        // Real XRPL Integration
+        log.info('CAMPAIGN', 'Starting real XRPL transactions...');
         
         // 1. Create DID for SME identity
+        log.info('CAMPAIGN', 'Step 1: Creating DID for SME identity');
         const kycData = {
           companyName: campaignData.name || '',
           registrationNumber: `REG${Date.now()}`,
@@ -140,13 +157,18 @@ export const useStore = create<AppState>((set, get) => ({
             bankStatement: 'bank_hash'
           }
         };
+        log.debug('CAMPAIGN', 'KYC data prepared', kycData);
 
-        const did = await crowdLiftXRPL.identity.createSMEDID(wallet.xrplWallet, kycData);
-        if (config.dev.enableLogging) {
-          console.log('DID created:', did);
+        try {
+          const did = await crowdLiftXRPL.identity.createSMEDID(wallet.xrplWallet, kycData);
+          log.info('CAMPAIGN', 'DID created successfully', { did });
+        } catch (error) {
+          log.error('CAMPAIGN', 'Failed to create DID', error);
+          throw new Error(`DID creation failed: ${error}`);
         }
 
         // 2. Mint PIT tokens
+        log.info('CAMPAIGN', 'Step 2: Minting PIT tokens');
         const tokenMetadata = {
           name: `${campaignData.name} Token`,
           symbol: campaignData.tokenSymbol || 'PIT',
@@ -155,32 +177,49 @@ export const useStore = create<AppState>((set, get) => ({
           totalSupply: campaignData.totalSupply || 1000000,
           decimals: config.app.defaultTokenDecimals
         };
+        log.debug('CAMPAIGN', 'Token metadata prepared', tokenMetadata);
 
-        const tokenId = await crowdLiftXRPL.tokens.mintPITTokens(
-          wallet.xrplWallet,
-          campaignData as SMECampaign,
-          tokenMetadata
-        );
-        if (config.dev.enableLogging) {
-          console.log('PIT tokens minted:', tokenId);
+        try {
+          const tokenId = await crowdLiftXRPL.tokens.mintPITTokens(
+            wallet.xrplWallet,
+            campaignData as SMECampaign,
+            tokenMetadata
+          );
+          log.info('CAMPAIGN', 'PIT tokens minted successfully', { tokenId });
+        } catch (error) {
+          log.error('CAMPAIGN', 'Failed to mint PIT tokens', error);
+          throw new Error(`Token minting failed: ${error}`);
         }
 
         // 3. Create AMM pool
-        const initialRLUSDLiquidity = Math.floor((campaignData.fundingGoal || 100000) * 0.1); // 10% of funding goal
-        const initialTokenLiquidity = Math.floor((campaignData.totalSupply || 1000000) * 0.1); // 10% of total supply
+        log.info('CAMPAIGN', 'Step 3: Creating AMM pool');
+        const initialRLUSDLiquidity = Math.floor((campaignData.fundingGoal || 100000) * 0.1);
+        const initialTokenLiquidity = Math.floor((campaignData.totalSupply || 1000000) * 0.1);
+        log.debug('CAMPAIGN', 'AMM liquidity calculations', { 
+          initialRLUSDLiquidity, 
+          initialTokenLiquidity,
+          fundingGoal: campaignData.fundingGoal,
+          totalSupply: campaignData.totalSupply 
+        });
 
-        const ammId = await crowdLiftXRPL.tokens.createAMMPool(
-          wallet.xrplWallet,
-          tokenId,
-          initialRLUSDLiquidity,
-          initialTokenLiquidity
-        );
-        if (config.dev.enableLogging) {
-          console.log('AMM pool created:', ammId);
+        try {
+          const ammId = await crowdLiftXRPL.tokens.createAMMPool(
+            wallet.xrplWallet,
+            'token-id-placeholder', // tokenId from step 2
+            initialRLUSDLiquidity,
+            initialTokenLiquidity
+          );
+          log.info('CAMPAIGN', 'AMM pool created successfully', { ammId });
+        } catch (error) {
+          log.error('CAMPAIGN', 'Failed to create AMM pool', error);
+          throw new Error(`AMM pool creation failed: ${error}`);
         }
+      } else {
+        log.info('CAMPAIGN', 'Skipping real XRPL transactions (skipRealTransactions=true)');
       }
 
       // Create campaign object
+      log.info('CAMPAIGN', 'Step 4: Creating campaign object');
       const newCampaign: SMECampaign = {
         id: campaignId,
         name: campaignData.name || 'Unnamed Campaign',
@@ -206,19 +245,19 @@ export const useStore = create<AppState>((set, get) => ({
           depth: 0
         }
       };
+      log.debug('CAMPAIGN', 'Campaign object created', newCampaign);
 
       // Add to campaigns list
+      log.info('CAMPAIGN', 'Step 5: Adding campaign to state');
       set({ 
         campaigns: [...campaigns, newCampaign],
         isLoading: false 
       });
       
-      if (config.dev.enableLogging) {
-        console.log('Campaign created successfully with real XRPL integration:', campaignId);
-      }
+      log.info('CAMPAIGN', '=== CAMPAIGN CREATION COMPLETED SUCCESSFULLY ===', { campaignId });
       return campaignId;
     } catch (error) {
-      console.error('Failed to create campaign:', error);
+      log.error('CAMPAIGN', '=== CAMPAIGN CREATION FAILED ===', error);
       set({ 
         error: error instanceof Error ? error.message : 'Failed to create campaign',
         isLoading: false 

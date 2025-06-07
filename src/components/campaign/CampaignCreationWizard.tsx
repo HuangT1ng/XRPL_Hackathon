@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
+import { log } from '@/lib/logger';
 
 interface CampaignData {
   // Company Information
@@ -131,15 +132,20 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
   };
 
   const handleSubmit = async () => {
+    log.info('WIZARD', '=== HANDLE SUBMIT CLICKED ===');
+    log.debug('WIZARD', 'Current campaign data', campaignData);
+    
     if (!wallet.isConnected) {
+      log.error('WIZARD', 'Wallet not connected in handleSubmit');
       toast.error('Please connect your wallet first');
       return;
     }
 
-    console.log('Starting campaign creation...', campaignData);
+    log.info('WIZARD', 'Starting campaign creation from wizard...');
     
     try {
       toast.info('Creating campaign on XRPL...');
+      log.info('WIZARD', 'About to call createCampaign store method...');
       const campaignId = await createCampaign({
         name: campaignData.name,
         description: campaignData.description,
@@ -174,10 +180,11 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
         }
       });
 
+      log.info('WIZARD', '🎉 Campaign created successfully in wizard!', { campaignId });
       toast.success('Campaign created successfully!');
       onComplete(campaignId);
     } catch (error) {
-      console.error('Campaign creation error:', error);
+      log.error('WIZARD', '❌ Campaign creation error in wizard', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign');
     }
   };

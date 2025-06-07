@@ -1,5 +1,6 @@
 import { Client, Wallet, dropsToXrp } from 'xrpl';
 import { config } from '../config';
+import { log } from '../logger';
 
 export class XRPLClient {
   private client: Client;
@@ -56,13 +57,38 @@ export class XRPLClient {
 
   async submitTransaction(transaction: any, wallet: Wallet) {
     await this.connect();
+    
     try {
+      log.debug('XRPL_CLIENT', 'Preparing transaction', { 
+        transactionType: transaction.TransactionType,
+        account: transaction.Account 
+      });
+      
       const prepared = await this.client.autofill(transaction);
+      
+      log.debug('XRPL_CLIENT', 'Transaction autofilled', {
+        lastLedgerSequence: prepared.LastLedgerSequence,
+        fee: prepared.Fee,
+        sequence: prepared.Sequence
+      });
+      
       const signed = wallet.sign(prepared);
+      
+      log.info('XRPL_CLIENT', 'Submitting transaction to XRPL...');
       const result = await this.client.submitAndWait(signed.tx_blob);
+      
+      log.info('XRPL_CLIENT', 'Transaction successful', { 
+        hash: result.result.hash,
+        validated: result.result.validated 
+      });
+      
       return result;
-    } catch (error) {
-      console.error('Error submitting transaction:', error);
+    } catch (error: any) {
+      log.error('XRPL_CLIENT', 'Transaction failed', {
+        error: error.message,
+        code: error.code,
+        type: error.type
+      });
       throw error;
     }
   }

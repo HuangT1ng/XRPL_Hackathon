@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CampaignCreationWizard } from '@/components/campaign/CampaignCreationWizard';
 import { useStore } from '@/store/useStore';
 import { toast } from 'sonner';
+import { log } from '@/lib/logger';
 
 export function CampaignOnboard() {
   const navigate = useNavigate();

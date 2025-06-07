@@ -50,4 +50,21 @@ export const config = {
   }
 };
 
+// Debug: Log configuration and environment variables
+console.log('🔧 Configuration loaded:', {
+  network: config.xrpl.network,
+  useMockData: config.dev.useMockData,
+  skipRealTransactions: config.dev.skipRealTransactions,
+  enableLogging: config.dev.enableLogging
+});
+
+console.log('🔍 Environment variables debug:', {
+  VITE_XRPL_NETWORK: import.meta.env.VITE_XRPL_NETWORK,
+  VITE_USE_MOCK_DATA: import.meta.env.VITE_USE_MOCK_DATA,
+  VITE_SKIP_REAL_TX: import.meta.env.VITE_SKIP_REAL_TX,
+  VITE_ENABLE_LOGGING: import.meta.env.VITE_ENABLE_LOGGING,
+  NODE_ENV: import.meta.env.NODE_ENV,
+  MODE: import.meta.env.MODE
+});
+
 export default config; 

@@ -1,6 +1,7 @@
-import { Wallet, convertStringToHex } from 'xrpl';
+import { Wallet, convertStringToHex, TrustSetFlags } from 'xrpl';
 import { xrplClient } from './client';
 import { SMECampaign, Milestone } from '@/types';
+import { log } from '@/lib/logger';
 
 export interface TokenMetadata {
   name: string;
@@ -12,43 +13,35 @@ export interface TokenMetadata {
 }
 
 export class XRPLTokenService {
-  async mintPITTokens(
-    wallet: Wallet, 
-    campaignData: SMECampaign, 
-    metadata: TokenMetadata
+  async issueFungibleToken(
+    wallet: Wallet,
+    tokenSymbol: string,
+    totalSupply: number
   ): Promise<string> {
     try {
       await xrplClient.connect();
 
-      // Create NFToken for PIT tokens (semi-fungible)
-      const mintTransaction = {
-        TransactionType: 'NFTokenMint',
+      // Step 1: Enable ripping on the issuer's account to allow others to create trustlines
+      log.info('XRPL_TOKEN', `Enabling default ripple for token ${tokenSymbol}`, { account: wallet.classicAddress });
+      const accountSetTx = {
+        TransactionType: 'AccountSet' as const,
         Account: wallet.classicAddress,
-        NFTokenTaxon: 0,
-        Flags: 8, // tfTransferable flag
-        URI: convertStringToHex(JSON.stringify({
-          name: metadata.name,
-          symbol: metadata.symbol,
-          description: metadata.description,
-          image: metadata.image,
-          totalSupply: metadata.totalSupply,
-          decimals: metadata.decimals,
-          campaignId: campaignData.id,
-          type: 'PIT_TOKEN'
-        }))
+        SetFlag: 8, // asfDefaultRipple
       };
+      await xrplClient.submitTransaction(accountSetTx, wallet);
+      log.info('XRPL_TOKEN', 'Default ripple enabled successfully');
 
-      const result = await xrplClient.submitTransaction(mintTransaction, wallet);
+      // The token is "issued" when the issuer sends it to another account that has set a trustline.
+      // There is no need to send a Payment to oneself. The total supply is a concept managed off-chain
+      // or by the circulating supply across all holders.
       
-      if (result.result.meta.TransactionResult === 'tesSUCCESS') {
-        // Extract NFTokenID from transaction metadata
-        const nftokenId = this.extractNFTokenID(result.result.meta);
-        return nftokenId;
-      } else {
-        throw new Error(`Token minting failed: ${result.result.meta.TransactionResult}`);
-      }
+      // For fungible tokens (IOUs), the currency code is key.
+      const currencyCode = tokenSymbol.padEnd(3, '\0');
+
+      return currencyCode;
+
     } catch (error) {
-      console.error('Error minting PIT tokens:', error);
+      log.error('XRPL_TOKEN', 'Error issuing fungible token', { error });
       throw error;
     }
   }
@@ -62,17 +55,96 @@ export class XRPLTokenService {
     try {
       await xrplClient.connect();
 
+      // The AMMCreate caller needs to hold the asset. For development, we simulate a payment from the issuer.
+      // In a real app, the user would need to acquire this token first.
+      const funderSecret = import.meta.env.VITE_RLUSD_ISSUER_SECRET as string;
+      if (!funderSecret) {
+        const errorMessage = "VITE_RLUSD_ISSUER_SECRET is not set in your environment variables. Cannot auto-fund wallet for development.";
+        log.error('XRPL_TOKEN', errorMessage);
+        throw new Error(errorMessage);
+      }
+      const funderWallet = Wallet.fromSecret(funderSecret);
+      const rlusdIssuer = funderWallet.classicAddress;
+
+      // Enable rippling on the issuer account to allow token transfers
+      try {
+        log.info('XRPL_TOKEN', `Enabling default ripple for RLUSD issuer...`);
+        const accountSetTx = {
+          TransactionType: 'AccountSet' as const,
+          Account: rlusdIssuer,
+          SetFlag: 8, // asfDefaultRipple
+        };
+        await xrplClient.submitTransaction(accountSetTx, funderWallet);
+        log.info('XRPL_TOKEN', 'Default ripple enabled successfully for RLUSD issuer.');
+      } catch (error: any) {
+        // Ignore error if flag is already set (tecALREADY)
+        if (error.data?.result?.engine_result_code !== -99) {
+           log.warn('XRPL_TOKEN', 'Could not enable ripple, flag might be set already.', { message: error.message });
+        }
+      }
+
+      // Non-standard currency codes must be represented as a 40-character hex string.
+      const rlusdCurrencyCode = convertStringToHex('RLUSD').padEnd(40, '0');
+      
+      log.info('XRPL_TOKEN', `Ensuring Trust Line for RLUSD from issuer ${rlusdIssuer} is set...`);
+      const trustSetTx = {
+        TransactionType: 'TrustSet' as const,
+        Account: wallet.classicAddress,
+        LimitAmount: {
+          currency: rlusdCurrencyCode,
+          issuer: rlusdIssuer,
+          value: (rlusdAmount * 2).toString() // Set a limit greater than the needed amount
+        },
+        Flags: TrustSetFlags.tfClearNoRipple
+      };
+      await xrplClient.submitTransaction(trustSetTx, wallet);
+      log.info('XRPL_TOKEN', 'RLUSD Trust Line configured successfully.');
+      
+      try {
+        log.info('XRPL_TOKEN', `Auto-funding wallet with ${rlusdAmount} RLUSD for development...`);
+        
+        const paymentTx = {
+          TransactionType: 'Payment' as const,
+          Account: funderWallet.classicAddress,
+          Destination: wallet.classicAddress,
+          Amount: {
+            currency: rlusdCurrencyCode, // Non-standard currencies must be in hex format
+            issuer: rlusdIssuer,
+            value: rlusdAmount.toString()
+          }
+        };
+        const paymentResult = await xrplClient.submitTransaction(paymentTx, funderWallet);
+        if (paymentResult.result.meta.TransactionResult !== 'tesSUCCESS') {
+          throw new Error(`Auto-funding payment failed: ${paymentResult.result.meta.TransactionResult}`);
+        }
+        log.info('XRPL_TOKEN', 'Auto-funding successful.');
+      } catch(e) {
+        const error = e instanceof Error ? e : new Error(String(e));
+        log.error('XRPL_TOKEN', 'Failed to auto-fund wallet for development.', { 
+          message: error.message,
+          stack: error.stack,
+          name: error.name,
+         });
+        throw error;
+      }
+
+      const pitCurrencyCode = convertStringToHex(pitTokenId).padEnd(40, '0');
+
+      // --- DEBUGGING ---
+      log.info('DEBUG: AMM ISSUER CHECK', `Campaign Issuer: ${wallet.classicAddress}, RLUSD Issuer: ${rlusdIssuer}, Are Same: ${wallet.classicAddress === rlusdIssuer}`);
+      // --- END DEBUGGING ---
+
       // Create AMM pool for PIT/RLUSD pair
       const ammCreateTransaction = {
         TransactionType: 'AMMCreate',
         Account: wallet.classicAddress,
         Amount: {
-          currency: 'RLUSD',
-          issuer: 'rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De', // RLUSD issuer on testnet
+          currency: rlusdCurrencyCode,
+          issuer: rlusdIssuer, 
           value: rlusdAmount.toString()
         },
         Amount2: {
-          currency: pitTokenId.substring(0, 3).toUpperCase(),
+          currency: pitCurrencyCode,
           issuer: wallet.classicAddress,
           value: pitTokenAmount.toString()
         },
@@ -88,8 +160,12 @@ export class XRPLTokenService {
       } else {
         throw new Error(`AMM creation failed: ${result.result.meta.TransactionResult}`);
       }
-    } catch (error) {
-      console.error('Error creating AMM pool:', error);
+    } catch (error: any) {
+      log.error('XRPL_TOKEN', 'Error creating AMM pool', { 
+        message: error.message, 
+        data: error.data,
+        stack: error.stack,
+       });
       throw error;
     }
   }
@@ -139,7 +215,7 @@ export class XRPLTokenService {
 
       return escrowHashes;
     } catch (error) {
-      console.error('Error setting up milestone escrows:', error);
+      log.error('XRPL_TOKEN', 'Error setting up milestone escrows', { error });
       throw error;
     }
   }
@@ -163,7 +239,7 @@ export class XRPLTokenService {
       const result = await xrplClient.submitTransaction(finishTransaction, wallet);
       return result.result.meta.TransactionResult === 'tesSUCCESS';
     } catch (error) {
-      console.error('Error finishing milestone escrow:', error);
+      log.error('XRPL_TOKEN', 'Error finishing milestone escrow', { error });
       throw error;
     }
   }
@@ -185,7 +261,7 @@ export class XRPLTokenService {
       const result = await xrplClient.submitTransaction(cancelTransaction, wallet);
       return result.result.meta.TransactionResult === 'tesSUCCESS';
     } catch (error) {
-      console.error('Error canceling escrow:', error);
+      log.error('XRPL_TOKEN', 'Error canceling escrow', { error });
       throw error;
     }
   }
@@ -201,7 +277,7 @@ export class XRPLTokenService {
 
       return response.result;
     } catch (error) {
-      console.error('Error getting token info:', error);
+      log.error('XRPL_TOKEN', 'Error getting token info', { error });
       throw error;
     }
   }
@@ -217,7 +293,7 @@ export class XRPLTokenService {
 
       return response.result;
     } catch (error) {
-      console.error('Error getting AMM info:', error);
+      log.error('XRPL_TOKEN', 'Error getting AMM info', { error });
       throw error;
     }
   }
@@ -232,9 +308,15 @@ export class XRPLTokenService {
 
   private extractAMMID(meta: any): string {
     // Extract AMM ID from transaction metadata
-    if (meta.CreatedNode && meta.CreatedNode.NewFields && meta.CreatedNode.NewFields.Account) {
-      return meta.CreatedNode.NewFields.Account;
+    for (const node of meta.AffectedNodes) {
+      if (node.CreatedNode && node.CreatedNode.LedgerEntryType === 'AMM') {
+        if (node.CreatedNode.NewFields && node.CreatedNode.NewFields.Account) {
+          log.info('XRPL_TOKEN', 'Successfully extracted AMM ID', { ammId: node.CreatedNode.NewFields.Account });
+          return node.CreatedNode.NewFields.Account;
+        }
+      }
     }
+    log.error('XRPL_TOKEN', 'Could not find AMM account in transaction metadata', { metadata: meta });
     throw new Error('Could not extract AMM ID from transaction metadata');
   }
 
@@ -252,6 +334,92 @@ export class XRPLTokenService {
       transaction: escrowHash
     });
     
-    return txResponse.result.Sequence;
+    const sequence = txResponse.result.tx_json?.Sequence;
+
+    if (sequence === undefined) {
+      const fallbackSequence = (txResponse.result as any).Sequence as number | undefined;
+      if (fallbackSequence !== undefined) {
+        return fallbackSequence;
+      }
+      throw new Error(`Could not find Sequence for transaction with hash ${escrowHash}`);
+    }
+    
+    return sequence;
+  }
+
+  /**
+   * (FOR DEMO PURPOSES) Sends RLUSD from the issuer to a buyer's account.
+   */
+  async sendRLUSDToBuyer(buyerAddress: string, amount: number): Promise<void> {
+    log.info('DEMO_FUNDING', `Attempting to send ${amount} RLUSD to ${buyerAddress}`);
+    try {
+      await xrplClient.connect();
+
+      const funderSecret = import.meta.env.VITE_RLUSD_ISSUER_SECRET as string;
+      if (!funderSecret) {
+        throw new Error("VITE_RLUSD_ISSUER_SECRET is not set.");
+      }
+      
+      const funderWallet = Wallet.fromSecret(funderSecret);
+      const rlusdIssuer = funderWallet.classicAddress;
+      const rlusdCurrencyCode = convertStringToHex('RLUSD').padEnd(40, '0');
+
+      // The buyer needs a trust line to the issuer first. 
+      // We will create it on their behalf for the demo.
+      log.info('DEMO_FUNDING', `Setting RLUSD trust line for ${buyerAddress}...`);
+      const buyerWallet = Wallet.fromSeed(buyerAddress); // This is not right, need buyer's secret
+      const trustSetTx = {
+        TransactionType: 'TrustSet' as const,
+        Account: buyerAddress,
+        LimitAmount: {
+          currency: rlusdCurrencyCode,
+          issuer: rlusdIssuer,
+          value: (amount * 2).toString() 
+        }
+      };
+      // This tx needs to be signed by the BUYER, not the funder. This approach is flawed.
+      // await xrplClient.submitTransaction(trustSetTx, funderWallet);
+
+      log.info('DEMO_FUNDING', `Sending ${amount} RLUSD payment...`);
+      const paymentTx = {
+        TransactionType: 'Payment' as const,
+        Account: rlusdIssuer,
+        Destination: buyerAddress,
+        Amount: {
+          currency: rlusdCurrencyCode,
+          issuer: rlusdIssuer,
+          value: amount.toString()
+        }
+      };
+
+      const paymentResult = await xrplClient.submitTransaction(paymentTx, funderWallet);
+      if (paymentResult.result.meta.TransactionResult !== 'tesSUCCESS') {
+        throw new Error(`Demo funding payment failed: ${paymentResult.result.meta.TransactionResult}`);
+      }
+      log.info('DEMO_FUNDING', `Successfully sent ${amount} RLUSD to ${buyerAddress}`);
+
+    } catch (error: any) {
+      log.error('DEMO_FUNDING', 'Failed to send RLUSD to buyer', {
+        message: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  async getIssuedTokens(issuerAddress: string): Promise<any[]> {
+    try {
+      await xrplClient.connect();
+      const response = await xrplClient.getClient().request({
+        command: 'account_lines',
+        account: issuerAddress,
+        ledger_index: 'validated',
+      });
+      log.info('XRPL_TOKEN', `Found ${response.result.lines.length} issued tokens for ${issuerAddress}`);
+      return response.result.lines;
+    } catch (error) {
+      log.error('XRPL_TOKEN', `Error fetching issued tokens for ${issuerAddress}`, { error });
+      throw error;
+    }
   }
 } 

@@ -1,297 +1,149 @@
-import { useEffect } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, TrendingDown, Plus, ExternalLink } from 'lucide-react';
+import { Plus, Building, DollarSign, Target, Percent } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store/useStore';
-import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 export function Portfolio() {
-  const { portfolio, refreshPortfolio, wallet, connectWallet, isLoading } = useStore();
+  const { campaigns, wallet } = useStore();
 
-  useEffect(() => {
-    if (wallet.isConnected) {
-      refreshPortfolio();
+  const myCampaigns = useMemo(() => {
+    if (!wallet.address) return [];
+    return campaigns.filter(c => c.founderAddress === wallet.address);
+  }, [campaigns, wallet.address]);
+
+  const otherCampaigns = useMemo(() => {
+    if (!wallet.address) return campaigns; // Show all if not connected
+    if (myCampaigns.length === 0) {
+      return campaigns;
     }
-  }, [wallet.isConnected, refreshPortfolio]);
+    return campaigns.filter(c => c.founderAddress !== wallet.address);
+  }, [campaigns, wallet.address, myCampaigns]);
+
 
   if (!wallet.isConnected) {
     return (
       <div className="w-full px-0 py-24">
         <div className="text-center max-w-md mx-auto">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Portfolio</h1>
-          <p className="text-gray-600">Connect your wallet using the button in the header to view your portfolio</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!portfolio || isLoading) {
-    return (
-      <div className="w-full px-0 py-24">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Loading Portfolio...</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">My Portfolio</h1>
+          <p className="text-gray-600">Please connect your wallet to view your portfolio and campaigns.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full px-0 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Portfolio</h1>
-        <p className="text-gray-600 mt-2">Track your investments and liquidity positions</p>
+    <div className="container mx-auto px-6 py-8">
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Portfolio</h1>
+          <p className="text-gray-600 mt-2">Here are the campaigns you have launched and other available campaigns.</p>
+        </div>
+        <Button asChild>
+          <Link to="/onboard">
+            <Plus className="mr-2 h-4 w-4" />
+            Launch Campaign
+          </Link>
+        </Button>
       </div>
 
-      {/* Portfolio Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <motion.div
+      {myCampaigns.length === 0 && otherCampaigns.length === 0 ? (
+         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Portfolio Value</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                ${ (Math.floor(Number(portfolio.totalValue) * 100) / 100).toFixed(2) }
-              </div>
-              <div className={cn(
-                'flex items-center mt-1 text-sm',
-                portfolio.totalPnL >= 0 ? 'text-green-600' : 'text-red-600'
-              )}>
-                {portfolio.totalPnL >= 0 ? (
-                  <TrendingUp className="h-4 w-4 mr-1" />
-                ) : (
-                  <TrendingDown className="h-4 w-4 mr-1" />
-                )}
-                ${Math.abs(portfolio.totalPnL).toLocaleString()} (
-                {((portfolio.totalPnL / (portfolio.totalValue - portfolio.totalPnL)) * 100).toFixed(2)}%)
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">Token Holdings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {portfolio.holdings.length}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                Active positions
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-gray-600">LP Positions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {portfolio.liquidityPositions.length}
-              </div>
-              <div className="text-sm text-gray-500 mt-1">
-                Providing liquidity
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      {/* Token Holdings */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="mb-8"
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Token Holdings</CardTitle>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Buy Tokens
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {portfolio.holdings.map((holding) => (
-                <div key={holding.campaignId} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                      <span className="font-bold text-primary-600">{holding.tokenSymbol}</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{holding.tokenSymbol}</div>
-                      <div className="text-sm text-gray-500">
-                        {holding.quantity.toLocaleString()} tokens
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="font-medium text-gray-900">
-                      ${holding.totalValue.toLocaleString()}
-                    </div>
-                    <div className={cn(
-                      'text-sm flex items-center',
-                      holding.pnl >= 0 ? 'text-green-600' : 'text-red-600'
-                    )}>
-                      {holding.pnl >= 0 ? (
-                        <TrendingUp className="h-3 w-3 mr-1" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 mr-1" />
-                      )}
-                      {holding.pnlPercentage >= 0 ? '+' : ''}{holding.pnlPercentage.toFixed(2)}%
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Avg Cost</div>
-                    <div className="font-medium">${holding.averageCost.toFixed(2)}</div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500">Current Price</div>
-                    <div className="font-medium">${holding.currentPrice.toFixed(2)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Liquidity Positions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
-        className="mb-8"
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Liquidity Positions</CardTitle>
-              <Button size="sm" variant="outline">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Liquidity
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {portfolio.liquidityPositions.map((position) => (
-                <div key={position.poolId} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <div className="flex -space-x-2">
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-xs font-bold text-primary-600 border-2 border-white">
-                        {position.tokenA}
-                      </div>
-                      <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-600 border-2 border-white">
-                        {position.tokenB}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">
-                        {position.tokenA}/{position.tokenB}
-                      </div>
-                      <div className="text-sm text-gray-500">Pool ID: {position.poolId}</div>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="font-medium text-gray-900">
-                      ${position.currentValue.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-500">Current Value</div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="font-medium text-green-600">
-                      ${position.feesEarned.toLocaleString()}
-                    </div>
-                    <div className="text-sm text-gray-500">Fees Earned</div>
-                  </div>
-                  
-                  <div className="text-right">
-                    <div className="font-medium text-gray-900">{position.apr}%</div>
-                    <div className="text-sm text-gray-500">APR</div>
-                  </div>
-                  
-                  <Button size="sm" variant="outline">
-                    <ExternalLink className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      {/* Pending Refunds */}
-      {portfolio.pendingRefunds.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <Card>
+          <Card className="text-center py-12">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                Pending Refunds
-                <Badge variant="secondary">{portfolio.pendingRefunds.length}</Badge>
-              </CardTitle>
+              <CardTitle>No Campaigns Found</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {portfolio.pendingRefunds.map((refund) => (
-                  <div key={refund.campaignId} className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                    <div>
-                      <div className="font-medium text-gray-900">Campaign #{refund.campaignId}</div>
-                      <div className="text-sm text-gray-600">{refund.reason}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium text-gray-900">${refund.amount.toLocaleString()}</div>
-                      <div className="text-sm text-gray-500">
-                        Available {refund.availableAt.toLocaleDateString()}
-                      </div>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      disabled={refund.status !== 'claimable'}
-                      variant="outline"
-                    >
-                      {refund.status === 'claimable' ? 'Claim' : 'Pending'}
-                    </Button>
-                  </div>
+              <p className="text-gray-600 mb-4">There are no active campaigns. Start one today!</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      ) : (
+        <div className="space-y-12">
+          {myCampaigns.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">My Launched Campaigns</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myCampaigns.map((campaign, index) => (
+                  <CampaignCardItem key={campaign.id} campaign={campaign} index={index} />
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          )}
+
+          {otherCampaigns.length > 0 && (
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+                {myCampaigns.length > 0 ? 'Other Available Campaigns' : 'All Available Campaigns'}
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {otherCampaigns.map((campaign, index) => (
+                   <CampaignCardItem key={campaign.id} campaign={campaign} index={index} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
+
+const CampaignCardItem = ({ campaign, index }: { campaign: any, index: number }) => (
+  <motion.div
+    key={campaign.id}
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay: index * 0.1 }}
+  >
+    <Card className="h-full flex flex-col">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg mb-1">{campaign.name}</CardTitle>
+            <Badge variant="outline">{campaign.industry}</Badge>
+          </div>
+          <Badge className={campaign.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+            {campaign.status}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-4">
+        <div className="flex items-center text-sm text-gray-600">
+          <DollarSign className="h-4 w-4 mr-2" />
+          <span>Funding Goal: ${campaign.fundingGoal.toLocaleString()}</span>
+        </div>
+        <div className="flex items-center text-sm text-gray-600">
+          <Target className="h-4 w-4 mr-2" />
+          <span>Raised: ${campaign.currentFunding.toLocaleString()}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+          <div 
+            className="bg-primary-600 h-2.5 rounded-full" 
+            style={{ width: `${(campaign.currentFunding / campaign.fundingGoal) * 100}%` }}
+          ></div>
+        </div>
+        <div className="flex items-center text-sm text-gray-600">
+          <Percent className="h-4 w-4 mr-2" />
+          <span>Token Price: ${campaign.tokenPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center text-sm text-gray-600">
+          <Building className="h-4 w-4 mr-2" />
+          <span>Total Supply: {campaign.totalSupply.toLocaleString()} {campaign.tokenSymbol}</span>
+        </div>
+      </CardContent>
+      <div className="p-4 pt-0">
+        <Button asChild className="w-full">
+          <Link to={`/campaign/${campaign.id}`}>View Details</Link>
+        </Button>
+      </div>
+    </Card>
+  </motion.div>
+);

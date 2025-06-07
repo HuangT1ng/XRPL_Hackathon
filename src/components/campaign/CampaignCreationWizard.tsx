@@ -125,6 +125,7 @@ export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId
         tokenSymbol: campaignData.tokenSymbol,
         tokenPrice: campaignData.tokenPrice,
         totalSupply: campaignData.totalSupply,
+        milestones: [],
         launchDate: new Date(campaignData.launchDate),
         endDate: new Date(campaignData.endDate),
         status: 'active' as const,

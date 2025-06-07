@@ -4,7 +4,8 @@ import { ArrowRight, Shield, TrendingUp, Users, Zap, Wallet } from 'lucide-react
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useStore } from '@/store/useStore';
-import { crowdLiftXRPL } from '@/lib/xrpl';
+import { xrplCampaignService } from '@/lib/xrpl/campaigns';
+import { config } from '@/lib/config';
 
 const features = [
   {
@@ -74,68 +75,79 @@ const mockCampaigns = [
 ];
 
 export function Landing() {
-  const navigate = useNavigate();
-  const { campaigns, setCampaigns, wallet, connectWallet, isLoading } = useStore();
-  const [seedInput, setSeedInput] = useState('');
-  const [seedStored, setSeedStored] = useState(() => !!localStorage.getItem('xrpl_wallet_seed'));
-
-  const handleSeedSubmit = () => {
-    if (seedInput.trim()) {
-      localStorage.setItem('xrpl_wallet_seed', seedInput.trim());
-      setSeedStored(true);
-      setSeedInput('');
-      connectWallet();
-    }
-  };
-
-  const handleConnectClick = () => {
-    connectWallet();
-  };
+  const { setCampaigns, campaigns, wallet, connectWallet, isLoading } = useStore();
+  const ISSUER_ADDRESS = 'rP9g3QyYkGZUvB9k2v6so7qA3iF4b1Bw8X';
 
   useEffect(() => {
     const fetchCampaigns = async () => {
-      if (wallet.isConnected && wallet.xrplWallet) {
-        try {
-          const activeCampaigns = await crowdLiftXRPL.campaigns.getActiveCampaigns(wallet.xrplWallet);
-          setCampaigns(activeCampaigns);
-        } catch (error) {
-          console.error('Failed to fetch campaigns:', error);
-        }
-      }
+      const onChainCampaigns = await xrplCampaignService.getIssuerCampaigns(ISSUER_ADDRESS);
+      setCampaigns(onChainCampaigns);
     };
 
-    fetchCampaigns();
-  }, [wallet.isConnected, wallet.xrplWallet, setCampaigns]);
+    if (campaigns.length === 0) {
+      fetchCampaigns();
+    }
+  }, [setCampaigns, campaigns.length]);
 
   return (
     <div className="w-full">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary-50 via-white to-primary-100 w-full overflow-hidden">
-        <div className="w-full px-4 py-20 sm:py-28 flex flex-col items-center relative z-10">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-5xl sm:text-7xl font-extrabold text-gray-900 text-center mb-4"
-          >
-            Democratize
-            <br /> Pre-IPO Investments
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="mt-4 text-xl sm:text-2xl text-gray-600 max-w-2xl text-center"
-          >
-            CrowdLift enables SMEs to tokenize fundraising campaigns with tokens on XRPL. Investors can trade PIT tokens, provide liquidity, and track progress in real-time.
-          </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-10 flex items-center justify-center gap-x-6"
-          >
-          </motion.div>
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-primary-50">
+        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl"
+            >
+              Democratize Pre-IPO
+              <span className="bg-gradient-to-r from-primary-600 to-primary-800 bg-clip-text text-transparent"> Investments</span>
+            </motion.h1>
+            
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="mt-6 text-lg leading-8 text-gray-600"
+            >
+              CrowdLift enables SMEs to tokenize fundraising campaigns with milestone-based escrows on XRPL. 
+              Investors can trade PIT tokens, provide liquidity, and track progress in real-time.
+            </motion.p>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="mt-10 flex items-center justify-center gap-x-6"
+            >
+              {!wallet.isConnected ? (
+                <Button 
+                  onClick={() => connectWallet()} 
+                  disabled={isLoading}
+                  size="lg"
+                  className="bg-primary-600 hover:bg-primary-700 text-white"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {isLoading ? 'Connecting...' : 'Connect Wallet'}
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/onboard">
+                      Launch Campaign
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/portfolio">
+                      View Portfolio
+                    </Link>
+                  </Button>
+                </>
+              )}
+            </motion.div>
+          </div>
         </div>
         {/* Decorative background blob */}
         <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[80vw] h-[40vw] bg-gradient-to-tr from-primary-200 via-primary-100 to-white rounded-full blur-3xl opacity-40 z-0" />
@@ -214,7 +226,7 @@ export function Landing() {
           </div>
           <div className="mt-10 text-center">
             <Button asChild variant="outline" size="lg">
-              <Link to="/discover" className="text-black">
+              <Link to="/portfolio">
                 View All Campaigns
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

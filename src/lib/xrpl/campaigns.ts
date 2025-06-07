@@ -1,110 +1,77 @@
-import { Wallet } from 'xrpl';
-import { xrplClient } from './client';
+import { xrplClient, XRPLClient } from './client';
+import { XRPLTokenService } from './tokens';
 import { SMECampaign } from '@/types';
+import { log } from '@/lib/logger';
+import { Wallet, convertHexToString } from 'xrpl';
 
 export class XRPLCampaignService {
-  async getActiveCampaigns(wallet: Wallet): Promise<SMECampaign[]> {
+  private tokenService: XRPLTokenService;
+
+  constructor() {
+    this.tokenService = new XRPLTokenService();
+  }
+
+  async getIssuerCampaigns(issuerAddress: string): Promise<SMECampaign[]> {
+    log.info('CAMPAIGN_SERVICE', `Fetching campaigns for issuer: ${issuerAddress}`);
     try {
-      await xrplClient.connect();
-
-      // Query for campaign NFTs
-      const response = await xrplClient.getClient().request({
-        command: 'account_nfts',
-        account: wallet.classicAddress
-      });
-
+      const issuedTokens = await this.tokenService.getIssuedTokens(issuerAddress);
+      
       const campaigns: SMECampaign[] = [];
 
-      for (const nft of response.result.account_nfts) {
-        if (nft.URI) {
-          const metadata = JSON.parse(Buffer.from(nft.URI, 'hex').toString());
-          if (metadata.type === 'PIT_TOKEN') {
-            // Get campaign details from the NFT metadata
-            const campaign: SMECampaign = {
-              id: metadata.campaignId,
-              name: metadata.name,
-              description: metadata.description,
-              industry: metadata.industry || '',
-              fundingGoal: metadata.fundingGoal || 0,
-              currentFunding: metadata.currentFunding || 0,
-              tokenSymbol: metadata.symbol,
-              tokenPrice: metadata.tokenPrice || 0,
-              totalSupply: metadata.totalSupply,
-              circulatingSupply: metadata.circulatingSupply || 0,
-              status: 'active',
-              createdAt: new Date(metadata.createdAt),
-              launchDate: new Date(metadata.launchDate),
-              endDate: new Date(metadata.endDate),
-              founderAddress: metadata.founderAddress,
-              milestones: metadata.milestones || [],
-              image: metadata.image,
-              amm: {
-                poolId: metadata.ammPoolId || '',
-                tvl: metadata.tvl || 0,
-                apr: metadata.apr || 0,
-                depth: metadata.depth || 0
-              }
-            };
-            campaigns.push(campaign);
-          }
+      for (const token of issuedTokens) {
+        // The token 'currency' is what we use as the campaign identifier
+        const currency = token.currency;
+
+        // Fetch AMM info to get price data
+        let tokenPrice = 1; // Default price
+        try {
+            // This is a simplification. A real implementation needs to find the AMM for the token pair.
+            // For now, we are assuming a simple naming convention or a single AMM per token.
+            const ammInfo = await this.tokenService.getAMMInfo(`pool_${currency.toLowerCase()}_rlusd`);
+            if (ammInfo && ammInfo.amount2 && ammInfo.amount) {
+                // A very basic price calculation. This is not accurate.
+                tokenPrice = parseFloat(ammInfo.amount.value) / parseFloat(ammInfo.amount2.value);
+            }
+        } catch {
+            log.warn('CAMPAIGN_SERVICE', `Could not find or calculate price for AMM of ${currency}`);
         }
+
+        const campaign: SMECampaign = {
+          id: currency,
+          name: `Campaign ${convertHexToString(currency)}`,
+          description: `Live on-chain campaign for token ${convertHexToString(currency)}.`,
+          industry: 'On-Chain',
+          fundingGoal: 100000, // Placeholder
+          currentFunding: parseFloat(token.balance) * -1, // Balance is negative from issuer's perspective
+          tokenSymbol: convertHexToString(currency),
+          tokenPrice: tokenPrice,
+          totalSupply: 1000000, // Placeholder
+          circulatingSupply: parseFloat(token.balance) * -1,
+          founderAddress: issuerAddress,
+          status: 'active',
+          createdAt: new Date(), // Placeholder
+          launchDate: new Date(), // Placeholder
+          endDate: new Date(), // Placeholder
+          milestones: [],
+          image: '/api/placeholder/400/300',
+          amm: {
+            poolId: 'unknown', // Placeholder
+            tvl: 0, // Placeholder
+            apr: 0, // Placeholder
+            depth: 0, // Placeholder
+          },
+        };
+        campaigns.push(campaign);
       }
 
+      log.info('CAMPAIGN_SERVICE', `Found and processed ${campaigns.length} campaigns.`);
       return campaigns;
+
     } catch (error) {
-      console.error('Error getting active campaigns:', error);
-      return [];
+      log.error('CAMPAIGN_SERVICE', 'Error fetching issuer campaigns', { error });
+      return []; // Return empty array on error
     }
   }
+}
 
-  async getCampaignDetails(wallet: Wallet, campaignId: string): Promise<SMECampaign | null> {
-    try {
-      await xrplClient.connect();
-
-      // Query for the specific campaign NFT
-      const response = await xrplClient.getClient().request({
-        command: 'account_nfts',
-        account: wallet.classicAddress
-      });
-
-      for (const nft of response.result.account_nfts) {
-        if (nft.URI) {
-          const metadata = JSON.parse(Buffer.from(nft.URI, 'hex').toString());
-          if (metadata.type === 'PIT_TOKEN' && metadata.campaignId === campaignId) {
-            // Get campaign details from the NFT metadata
-            return {
-              id: metadata.campaignId,
-              name: metadata.name,
-              description: metadata.description,
-              industry: metadata.industry || '',
-              fundingGoal: metadata.fundingGoal || 0,
-              currentFunding: metadata.currentFunding || 0,
-              tokenSymbol: metadata.symbol,
-              tokenPrice: metadata.tokenPrice || 0,
-              totalSupply: metadata.totalSupply,
-              circulatingSupply: metadata.circulatingSupply || 0,
-              status: 'active',
-              createdAt: new Date(metadata.createdAt),
-              launchDate: new Date(metadata.launchDate),
-              endDate: new Date(metadata.endDate),
-              founderAddress: metadata.founderAddress,
-              milestones: metadata.milestones || [],
-              image: metadata.image,
-              amm: {
-                poolId: metadata.ammPoolId || '',
-                tvl: metadata.tvl || 0,
-                apr: metadata.apr || 0,
-                depth: metadata.depth || 0
-              }
-            };
-          }
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error getting campaign details:', error);
-      return null;
-    }
-  }
-} 
+export const xrplCampaignService = new XRPLCampaignService(); 

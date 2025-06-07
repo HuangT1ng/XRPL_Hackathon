@@ -29,32 +29,42 @@ export class XRPLTradingService {
     try {
       await xrplClient.connect();
 
-      // Calculate minimum amount out based on slippage
-      const minAmountOut = params.amount * (1 - params.slippage / 100);
+      // For a swap, we create a Payment transaction.
+      // We specify the Amount to deliver (the token the user wants to receive)
+      // and a SendMax, which is the maximum amount of the other token they are willing to give up.
+      // The AMM automatically provides the exchange rate.
 
-      const swapTransaction = {
-        TransactionType: 'AMMDeposit',
-        Account: wallet.classicAddress,
-        Asset: {
-          currency: params.fromToken === 'XRP' ? 'XRP' : params.fromToken,
-          issuer: params.fromToken === 'XRP' ? undefined : wallet.classicAddress
-        },
-        Asset2: {
-          currency: params.toToken === 'XRP' ? 'XRP' : params.toToken,
-          issuer: params.toToken === 'XRP' ? undefined : wallet.classicAddress
-        },
-        Amount: params.fromToken === 'XRP' 
-          ? (params.amount * 1000000).toString() 
-          : {
-              currency: params.fromToken,
-              issuer: wallet.classicAddress,
-              value: params.amount.toString()
-            },
-        EPrice: minAmountOut.toString()
+      // First, get the issuer addresses for the tokens involved.
+      // This is a simplified approach for the demo. A real app would look these up dynamically.
+      const rlusdIssuer = 'rNxFiiwTtFQuFp4uZVeKWQCvFhNH5sR8Yp'; // The fixed issuer of RLUSD
+      const campaignTokenInfo = await this.getTokenInfoFromAMM(params.toToken);
+      const campaignTokenIssuer = campaignTokenInfo.issuer;
+      
+      const amountToReceive = {
+        currency: params.toToken,
+        issuer: campaignTokenIssuer,
+        value: '0.000001' // Bogus small value, the real amount is determined by the pathfinding.
+                         // The important part is specifying the currency we want.
+      };
+      
+      const amountToSpend = {
+        currency: params.fromToken,
+        issuer: rlusdIssuer,
+        value: params.amount.toString()
       };
 
-      const result = await xrplClient.submitTransaction(swapTransaction, wallet);
+      const paymentTx = {
+        TransactionType: 'Payment' as const,
+        Account: wallet.classicAddress,
+        Amount: amountToReceive,
+        SendMax: amountToSpend,
+        Destination: wallet.classicAddress, // Sending to ourselves to execute the swap
+        Flags: 131072 // tfPartialPayment
+      };
+
+      const result = await xrplClient.submitTransaction(paymentTx, wallet);
       return result;
+
     } catch (error) {
       console.error('Error executing swap:', error);
       throw error;
@@ -362,5 +372,26 @@ export class XRPLTradingService {
   private async get24hPriceChange(tokenA: string, tokenB: string): Promise<number> {
     // Mock implementation - would calculate from historical price data
     return (Math.random() - 0.5) * 20; // Random change between -10% and +10%
+  }
+
+  private async getTokenInfoFromAMM(tokenSymbol: string): Promise<{issuer: string}> {
+    // This is a mock. A real implementation would need a reliable way 
+    // to find the issuer for a given token symbol, perhaps from a curated list
+    // or by querying a registry. For the demo, we find an AMM that involves the token
+    // and assume the other asset is RLUSD to find the issuer.
+    const amms = await xrplClient.getClient().request({
+      command: 'amm_info',
+      asset: { currency: 'RLUSD' },
+      asset2: { currency: tokenSymbol }
+    });
+    
+    // For simplicity, we'll just grab the first one.
+    const amm = amms.result.amm;
+    if (!amm) throw new Error(`Could not find an AMM for ${tokenSymbol} and RLUSD`);
+
+    // The issuer is part of the Amount2 object (the campaign token)
+    return {
+      issuer: amm.amount2.issuer
+    };
   }
 } 

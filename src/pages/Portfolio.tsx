@@ -6,21 +6,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useStore } from '@/store/useStore';
-import { mockPortfolio } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 
 export function Portfolio() {
-  const { portfolio, setPortfolio, wallet, connectWallet } = useStore();
+  const { portfolio, refreshPortfolio, wallet, connectWallet, isLoading } = useStore();
 
   useEffect(() => {
     if (wallet.isConnected) {
-      setPortfolio(mockPortfolio);
+      refreshPortfolio();
     }
-  }, [wallet.isConnected, setPortfolio]);
+  }, [wallet.isConnected, refreshPortfolio]);
 
   if (!wallet.isConnected) {
     return (
-      <div className="container mx-auto px-6 py-24">
+      <div className="w-full px-0 py-24">
         <div className="text-center max-w-md mx-auto">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Portfolio</h1>
           <p className="text-gray-600">Connect your wallet using the button in the header to view your portfolio</p>
@@ -29,9 +28,9 @@ export function Portfolio() {
     );
   }
 
-  if (!portfolio) {
+  if (!portfolio || isLoading) {
     return (
-      <div className="container mx-auto px-6 py-24">
+      <div className="w-full px-0 py-24">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Loading Portfolio...</h1>
         </div>
@@ -40,7 +39,7 @@ export function Portfolio() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="w-full px-0 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Portfolio</h1>
         <p className="text-gray-600 mt-2">Track your investments and liquidity positions</p>

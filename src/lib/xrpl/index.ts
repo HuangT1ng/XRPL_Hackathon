@@ -5,6 +5,7 @@ export { XRPLTokenService } from './tokens';
 export { XRPLTradingService } from './trading';
 export { MilestoneVerificationService } from './milestones';
 export { WatchTowerService } from './watchtower';
+export { XRPLCampaignService } from './campaigns';
 
 // Types and Interfaces
 export type { KYCData, CreditScoreData } from './identity';
@@ -19,6 +20,7 @@ import { XRPLTokenService } from './tokens';
 import { XRPLTradingService } from './trading';
 import { MilestoneVerificationService } from './milestones';
 import { WatchTowerService } from './watchtower';
+import { XRPLCampaignService } from './campaigns';
 
 export class CrowdLiftXRPLService {
   public identity: XRPLIdentityService;
@@ -26,6 +28,7 @@ export class CrowdLiftXRPLService {
   public trading: XRPLTradingService;
   public milestones: MilestoneVerificationService;
   public watchtower: WatchTowerService;
+  public campaigns: XRPLCampaignService;
 
   constructor() {
     this.identity = new XRPLIdentityService();
@@ -33,6 +36,7 @@ export class CrowdLiftXRPLService {
     this.trading = new XRPLTradingService();
     this.milestones = new MilestoneVerificationService();
     this.watchtower = new WatchTowerService();
+    this.campaigns = new XRPLCampaignService();
   }
 
   async initialize(): Promise<void> {

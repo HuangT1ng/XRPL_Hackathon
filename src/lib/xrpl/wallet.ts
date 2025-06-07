@@ -10,7 +10,63 @@ export interface WalletInfo {
 }
 
 export class XRPLWalletService {
+  private readonly STORAGE_KEY = 'xrpl_wallet_seed';
   
+  /**
+   * Save wallet seed to localStorage
+   */
+  private saveWalletSeed(seed: string): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, seed);
+    } catch (error) {
+      console.error('Failed to save wallet seed:', error);
+    }
+  }
+
+  /**
+   * Load wallet seed from localStorage
+   */
+  private loadWalletSeed(): string | null {
+    try {
+      return localStorage.getItem(this.STORAGE_KEY);
+    } catch (error) {
+      console.error('Failed to load wallet seed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get existing wallet or create new one
+   */
+  async getOrCreateWallet(): Promise<WalletInfo> {
+    try {
+      // Try to load existing wallet
+      const existingSeed = this.loadWalletSeed();
+      if (existingSeed) {
+        if (config.dev.enableLogging) {
+          console.log('Loading existing wallet...');
+        }
+        return this.importWallet(existingSeed);
+      }
+
+      // Create new wallet if none exists
+      if (config.dev.enableLogging) {
+        console.log('No existing wallet found, creating new one...');
+      }
+      const walletInfo = await this.createAndFundWallet();
+      
+      // Save the new wallet seed
+      if (walletInfo.wallet.seed) {
+        this.saveWalletSeed(walletInfo.wallet.seed);
+      }
+      
+      return walletInfo;
+    } catch (error) {
+      console.error('Failed to get or create wallet:', error);
+      throw new Error(`Wallet operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   /**
    * Create a new XRPL wallet and fund it on testnet
    */

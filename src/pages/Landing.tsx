@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Shield, TrendingUp, Users, Zap, Wallet } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CampaignCard } from '@/components/campaign/CampaignCard';
 import { useStore } from '@/store/useStore';
-import { mockCampaigns } from '@/data/mockData';
+import { crowdLiftXRPL } from '@/lib/xrpl';
 
 const features = [
   {
@@ -31,18 +31,45 @@ const features = [
 ];
 
 export function Landing() {
-  const { setCampaigns, campaigns, wallet, connectWallet, isLoading } = useStore();
+  const navigate = useNavigate();
+  const { campaigns, setCampaigns, wallet, connectWallet, isLoading } = useStore();
+  const [seedInput, setSeedInput] = useState('');
+  const [seedStored, setSeedStored] = useState(() => !!localStorage.getItem('xrpl_wallet_seed'));
+
+  const handleSeedSubmit = () => {
+    if (seedInput.trim()) {
+      localStorage.setItem('xrpl_wallet_seed', seedInput.trim());
+      setSeedStored(true);
+      setSeedInput('');
+      connectWallet();
+    }
+  };
+
+  const handleConnectClick = () => {
+    connectWallet();
+  };
 
   useEffect(() => {
-    setCampaigns(mockCampaigns);
-  }, [setCampaigns]);
+    const fetchCampaigns = async () => {
+      if (wallet.isConnected && wallet.xrplWallet) {
+        try {
+          const activeCampaigns = await crowdLiftXRPL.campaigns.getActiveCampaigns(wallet.xrplWallet);
+          setCampaigns(activeCampaigns);
+        } catch (error) {
+          console.error('Failed to fetch campaigns:', error);
+        }
+      }
+    };
+
+    fetchCampaigns();
+  }, [wallet.isConnected, wallet.xrplWallet, setCampaigns]);
 
   return (
-    <div className="flex-1">
+    <div className="w-full">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-primary-50">
-        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+      <section className="relative overflow-hidden bg-gradient-to-br from-primary-50 via-white to-primary-50 w-full">
+        <div className="w-full px-0 py-24 sm:py-32 lg:px-0">
+          <div className="w-full text-center">
             <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -74,7 +101,7 @@ export function Landing() {
                   onClick={connectWallet} 
                   disabled={isLoading}
                   size="lg"
-                  className="bg-primary-600 hover:bg-primary-700 text-white"
+                  className="bg-primary-600 hover:bg-primary-700 text-black"
                 >
                   <Wallet className="mr-2 h-4 w-4" />
                   {isLoading ? 'Connecting...' : 'Connect Wallet'}
@@ -110,9 +137,9 @@ export function Landing() {
       </section>
 
       {/* Features Section */}
-      <section className="py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+      <section className="py-24 sm:py-32 w-full">
+        <div className="w-full lg:px-0">
+          <div className="w-full text-center">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Why Choose CrowdLift?
             </h2>
@@ -121,8 +148,8 @@ export function Landing() {
             </p>
           </div>
           
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2 xl:grid-cols-4">
+          <div className="w-full mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <dl className="grid w-full grid-cols-1 gap-x-8 gap-y-16 lg:grid-cols-2 xl:grid-cols-4">
               {features.map((feature, index) => (
                 <motion.div
                   key={feature.title}
@@ -146,9 +173,9 @@ export function Landing() {
       </section>
 
       {/* Featured Campaigns Section */}
-      <section className="bg-gray-50 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+      <section className="bg-gray-50 py-24 sm:py-32 w-full">
+        <div className="w-full lg:px-0">
+          <div className="w-full text-center">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
               Featured Campaigns
             </h2>
@@ -157,13 +184,13 @@ export function Landing() {
             </p>
           </div>
           
-          <div className="mt-16 grid grid-cols-1 gap-8 sm:mt-20 lg:grid-cols-3">
+          <div className="mt-16 grid grid-cols-1 gap-8 sm:mt-20 lg:grid-cols-3 w-full">
             {campaigns.slice(0, 3).map((campaign, index) => (
               <CampaignCard key={campaign.id} campaign={campaign} index={index} />
             ))}
           </div>
           
-          <div className="mt-12 text-center">
+          <div className="mt-12 text-center w-full">
             <Button asChild variant="outline" size="lg">
               <Link to="/discover">
                 View All Campaigns
@@ -175,9 +202,9 @@ export function Landing() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary-600">
-        <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
+      <section className="bg-primary-600 w-full">
+        <div className="px-0 py-24 sm:px-0 sm:py-32 lg:px-0 w-full">
+          <div className="w-full text-center">
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Ready to Start Your Journey?
             </h2>

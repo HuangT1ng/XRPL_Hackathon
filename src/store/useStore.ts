@@ -5,6 +5,28 @@ import { crowdLiftXRPL } from '@/lib/xrpl';
 import { xrplWalletService } from '@/lib/xrpl/wallet';
 import { config } from '@/lib/config';
 import { log } from '@/lib/logger';
+import { xrplClient } from '@/lib/xrpl/client';
+
+// Add type definitions for XRPL objects
+interface XRPLAMMObject {
+  index: string;
+  Amount: {
+    currency?: string;
+    value?: string;
+  };
+  Amount2: {
+    currency?: string;
+    value?: string;
+  };
+}
+
+interface XRPLEscrowObject {
+  index: string;
+  Amount: {
+    value?: string;
+  };
+  FinishAfter: number;
+}
 
 interface AppState {
   // Wallet
@@ -60,10 +82,10 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       log.debug('WALLET', 'Configuration check', { config: config.xrpl, dev: config.dev });
 
-      // Create and fund a real XRPL wallet
-      log.info('WALLET', 'Creating and funding real XRPL wallet...');
-      const walletInfo = await xrplWalletService.createAndFundWallet();
-      log.info('WALLET', 'Wallet created successfully', { address: walletInfo.address, balance: walletInfo.balance });
+      // Get existing wallet or create new one
+      log.info('WALLET', 'Getting or creating XRPL wallet...');
+      const walletInfo = await xrplWalletService.getOrCreateWallet();
+      log.info('WALLET', 'Wallet ready', { address: walletInfo.address, balance: walletInfo.balance });
       
       set({
         wallet: {
@@ -280,20 +302,7 @@ export const useStore = create<AppState>((set, get) => ({
         console.log('Refreshing portfolio for wallet:', wallet.address);
       }
 
-      if (config.dev.useMockData) {
-        // Use mock data if configured
-        const mockPortfolio: InvestorPortfolio = {
-          holdings: [],
-          liquidityPositions: [],
-          pendingRefunds: [],
-          totalValue: 0,
-          totalPnL: 0
-        };
-        set({ portfolio: mockPortfolio, isLoading: false });
-        return;
-      }
-
-      // Fetch real portfolio data from XRPL
+      // Initialize portfolio data structure
       const portfolioData: InvestorPortfolio = {
         holdings: [],
         liquidityPositions: [],
@@ -302,16 +311,94 @@ export const useStore = create<AppState>((set, get) => ({
         totalPnL: 0
       };
 
-      // Get account balance and convert to portfolio value
-      const balance = await xrplWalletService.getWalletBalance(wallet.address);
-      portfolioData.totalValue = parseFloat(balance);
+      // 1. Get XRP balance
+      const xrpBalance = await xrplWalletService.getWalletBalance(wallet.address);
+      portfolioData.totalValue = parseFloat(xrpBalance);
 
-      // TODO: Query XRPL for:
-      // - Token holdings (NFTokens owned by this address)
-      // - AMM positions (liquidity provider positions)
-      // - Pending escrow releases
-      // - Calculate total portfolio value and P&L
+      // 2. Get token holdings (NFTokens and issued tokens)
+      try {
+        const accountLines = await xrplClient.getClient().request({
+          command: 'account_lines',
+          account: wallet.address
+        });
 
+        // Process each token line
+        for (const line of accountLines.result.lines) {
+          if (parseFloat(line.balance) > 0) {
+            portfolioData.holdings.push({
+              campaignId: line.currency, // Using currency as campaignId for now
+              tokenSymbol: line.currency,
+              quantity: parseFloat(line.balance),
+              averageCost: 0, // Would need historical data to calculate
+              currentPrice: 0, // Would need price feed
+              totalValue: parseFloat(line.balance), // Simplified for now
+              pnl: 0,
+              pnlPercentage: 0
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching token holdings:', error);
+      }
+
+      // 3. Get AMM positions
+      try {
+        const accountObjects = await xrplClient.getClient().request({
+          command: 'account_objects',
+          account: wallet.address,
+          type: 'amm'
+        });
+
+        // Process each AMM position
+        for (const amm of accountObjects.result.account_objects as unknown as XRPLAMMObject[]) {
+          if (amm.Amount && amm.Amount2) {
+            const amountValue = typeof amm.Amount === 'string' ? amm.Amount : amm.Amount.value || '0';
+            const amount2Value = typeof amm.Amount2 === 'string' ? amm.Amount2 : amm.Amount2.value || '0';
+            const amountCurrency = typeof amm.Amount === 'string' ? 'XRP' : amm.Amount.currency || 'XRP';
+            const amount2Currency = typeof amm.Amount2 === 'string' ? 'XRP' : amm.Amount2.currency || 'XRP';
+
+            portfolioData.liquidityPositions.push({
+              poolId: amm.index,
+              campaignId: amountCurrency,
+              tokenA: amountCurrency,
+              tokenB: amount2Currency,
+              liquidityProvided: parseFloat(amountValue),
+              currentValue: parseFloat(amountValue),
+              feesEarned: 0, // Would need historical data
+              apr: 0 // Would need pool data
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching AMM positions:', error);
+      }
+
+      // 4. Get pending escrows (potential refunds)
+      try {
+        const accountObjects = await xrplClient.getClient().request({
+          command: 'account_objects',
+          account: wallet.address,
+          type: 'escrow'
+        });
+
+        // Process each escrow
+        for (const escrow of accountObjects.result.account_objects as unknown as XRPLEscrowObject[]) {
+          if (escrow.Amount) {
+            const amountValue = typeof escrow.Amount === 'string' ? escrow.Amount : escrow.Amount.value || '0';
+            portfolioData.pendingRefunds.push({
+              campaignId: escrow.index,
+              amount: parseFloat(amountValue),
+              reason: 'Escrow release',
+              availableAt: new Date(escrow.FinishAfter * 1000),
+              status: 'pending'
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching escrows:', error);
+      }
+
+      // Update portfolio in state
       set({ portfolio: portfolioData, isLoading: false });
       
       if (config.dev.enableLogging) {

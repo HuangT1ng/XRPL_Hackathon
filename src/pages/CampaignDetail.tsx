@@ -11,21 +11,46 @@ import { PriceChart } from '@/components/trading/PriceChart';
 import { MilestoneProgress } from '@/components/campaign/MilestoneProgress';
 import { useStore } from '@/store/useStore';
 import { useLivePoolStats } from '@/hooks/useLivePoolStats';
-import { mockCampaigns } from '@/data/mockData';
+import { crowdLiftXRPL } from '@/lib/xrpl';
+import { SMECampaign } from '@/types';
 
 export function CampaignDetail() {
   const { id } = useParams<{ id: string }>();
-  const [campaign, setCampaign] = useState(mockCampaigns.find(c => c.id === id));
-  const poolStats = useLivePoolStats(campaign?.amm.poolId || '');
+  const [campaign, setCampaign] = useState<SMECampaign | null>(null);
+  const { wallet, isLoading } = useStore();
+  const poolStats = useLivePoolStats(campaign?.amm?.poolId || '');
 
-  if (!campaign) {
+  useEffect(() => {
+    const fetchCampaign = async () => {
+      if (wallet.isConnected && wallet.xrplWallet && id) {
+        try {
+          const campaignData = await crowdLiftXRPL.campaigns.getCampaignDetails(wallet.xrplWallet, id);
+          setCampaign(campaignData);
+        } catch (error) {
+          console.error('Failed to fetch campaign details:', error);
+        }
+      }
+    };
+
+    fetchCampaign();
+  }, [wallet.isConnected, wallet.xrplWallet, id]);
+
+  if (!wallet.isConnected) {
     return (
-      <div className="container mx-auto px-6 py-24">
+      <div className="w-full px-0 py-24">
+        <div className="text-center max-w-md mx-auto">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Campaign Details</h1>
+          <p className="text-gray-600">Connect your wallet to view campaign details</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!campaign || isLoading) {
+    return (
+      <div className="w-full px-0 py-24">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Campaign not found</h1>
-          <Button asChild className="mt-4">
-            <Link to="/">Back to Home</Link>
-          </Button>
+          <h1 className="text-2xl font-bold text-gray-900">Loading Campaign Details...</h1>
         </div>
       </div>
     );
@@ -34,7 +59,7 @@ export function CampaignDetail() {
   const fundingPercentage = (campaign.currentFunding / campaign.fundingGoal) * 100;
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="w-full px-0 py-8">
       {/* Back Button */}
       <Button asChild variant="ghost" className="mb-6">
         <Link to="/">

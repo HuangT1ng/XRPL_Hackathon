@@ -78,53 +78,6 @@ src/
 └── vite-env.d.ts
 ```
 
-## 🏗️ Architecture
-
-### Frontend (React + TypeScript)
-```
-src/
-├── components/
-│   ├── campaign/
-│   │   ├── CampaignCard.tsx
-│   │   ├── CampaignCreationWizard.tsx
-│   ├── trading/
-│   │   ├── SwapWidget.tsx (Enhanced with partial exit)
-│   │   └── PriceChart.tsx
-│   └── layout/
-├── lib/xrpl/
-│   ├── client.ts              # Core XRPL connection
-│   ├── identity.ts            # DID & credit scoring
-│   ├── tokens.ts              # PIT token minting & AMM
-│   ├── trading.ts             # Swaps & liquidity
-│   ├── watchtower.ts          # Safety monitoring
-│   └── index.ts               # Unified service
-├── store/
-│   └── useStore.ts            # Enhanced with XRPL integration
-└── types/
-    └── index.ts               # Type definitions
-```
-
-### XRPL Integration Layer
-```
-CrowdLiftXRPLService
-├── Identity Service
-│   ├── DID Creation (DidCreate)
-│   ├── Credit Score Hashing
-│   └── KYC Verification
-├── Token Service
-│   ├── PIT Token Minting (NFTokenMint)
-│   ├── AMM Pool Creation (AMMCreate)
-│   └── Escrow Management (EscrowCreate/Finish/Cancel)
-├── Trading Service
-│   ├── Token Swaps (AMMDeposit/Withdraw)
-│   ├── Partial Exits
-│   └── Liquidity Provision
-└── Watch-Tower Service
-    ├── Campaign Monitoring
-    ├── Auto-Refund Triggers
-    └── Safety Fund Management
-```
-
 ## 🔧 XRPL Primitives Used
 
 | Feature | XRPL Transaction | Purpose |
@@ -145,7 +98,6 @@ CrowdLiftXRPLService
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd crowdlift-platform
 
 # Install dependencies
 npm install

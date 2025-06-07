@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Shield, TrendingUp, Users, Zap } from 'lucide-react';
+import { ArrowRight, Shield, TrendingUp, Users, Zap, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CampaignCard } from '@/components/campaign/CampaignCard';
@@ -31,7 +31,7 @@ const features = [
 ];
 
 export function Landing() {
-  const { setCampaigns, campaigns } = useStore();
+  const { setCampaigns, campaigns, wallet, connectWallet, isLoading } = useStore();
 
   useEffect(() => {
     setCampaigns(mockCampaigns);
@@ -69,17 +69,31 @@ export function Landing() {
               transition={{ duration: 0.8, delay: 0.4 }}
               className="mt-10 flex items-center justify-center gap-x-6"
             >
-              <Button asChild variant="outline" size="lg">
-                <Link to="/onboard">
-                  Launch Campaign
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link to="/portfolio">
-                  View Portfolio
-                </Link>
-              </Button>
+              {!wallet.isConnected ? (
+                <Button 
+                  onClick={connectWallet} 
+                  disabled={isLoading}
+                  size="lg"
+                  className="bg-primary-600 hover:bg-primary-700 text-white"
+                >
+                  <Wallet className="mr-2 h-4 w-4" />
+                  {isLoading ? 'Connecting...' : 'Connect Wallet'}
+                </Button>
+              ) : (
+                <>
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/onboard">
+                      Launch Campaign
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <Link to="/portfolio">
+                      View Portfolio
+                    </Link>
+                  </Button>
+                </>
+              )}
             </motion.div>
           </div>
         </div>

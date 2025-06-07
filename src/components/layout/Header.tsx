@@ -66,11 +66,16 @@ export function Header() {
             ))}
           </div>
           
-          <div className="hidden lg:flex lg:flex-1 lg:justify-end">            
+          <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-4">
+            {wallet.isConnected && (
+              <div className="text-sm text-gray-600">
+                {wallet.address?.slice(0, 6)}...{wallet.address?.slice(-4)}
+              </div>
+            )}
             <Button
               onClick={handleWalletAction}
               disabled={isLoading}
-              variant={wallet.isConnected ? 'success' : 'outline'}
+              variant={wallet.isConnected ? 'destructive' : 'outline'}
             >
               <Wallet className="mr-2 h-4 w-4" />
               {isLoading ? 'Connecting...' : wallet.isConnected ? 'Disconnect' : 'Connect Wallet'}

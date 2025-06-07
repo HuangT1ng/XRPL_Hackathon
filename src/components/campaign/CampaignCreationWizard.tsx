@@ -1,0 +1,557 @@
+import { useState } from 'react';
+import { ArrowRight, ArrowLeft, Check, Building, Coins, Target, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { useStore } from '@/store/useStore';
+import { toast } from 'sonner';
+
+interface CampaignData {
+  // Company Information
+  companyName: string;
+  industry: string;
+  description: string;
+  website: string;
+  
+  // Campaign Details
+  name: string;
+  fundingGoal: number;
+  tokenSymbol: string;
+  tokenPrice: number;
+  totalSupply: number;
+  
+  // Milestones
+  milestones: {
+    title: string;
+    description: string;
+    targetDate: string;
+    fundingPercentage: number;
+  }[];
+  
+  // Timeline
+  launchDate: string;
+  endDate: string;
+}
+
+const STEPS = [
+  { id: 'company', title: 'Company Info', icon: Building },
+  { id: 'campaign', title: 'Campaign Details', icon: Target },
+  { id: 'tokenomics', title: 'Tokenomics', icon: Coins },
+  { id: 'milestones', title: 'Milestones', icon: Calendar },
+  { id: 'review', title: 'Review & Launch', icon: Check }
+];
+
+const INDUSTRIES = [
+  'Technology', 'Healthcare', 'Finance', 'E-commerce', 'Food & Beverage',
+  'Manufacturing', 'Real Estate', 'Education', 'Entertainment', 'Other'
+];
+
+export function CampaignCreationWizard({ onComplete }: { onComplete: (campaignId: string) => void }) {
+  const { createCampaign, wallet, isLoading } = useStore();
+  
+  const [currentStep, setCurrentStep] = useState(0);
+  const [campaignData, setCampaignData] = useState<CampaignData>({
+    companyName: '',
+    industry: '',
+    description: '',
+    website: '',
+    name: '',
+    fundingGoal: 0,
+    tokenSymbol: '',
+    tokenPrice: 0,
+    totalSupply: 0,
+    milestones: [
+      { title: '', description: '', targetDate: '', fundingPercentage: 25 },
+      { title: '', description: '', targetDate: '', fundingPercentage: 50 },
+      { title: '', description: '', targetDate: '', fundingPercentage: 25 }
+    ],
+    launchDate: '',
+    endDate: ''
+  });
+
+  const updateCampaignData = (field: string, value: any) => {
+    setCampaignData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const updateMilestone = (index: number, field: string, value: any) => {
+    setCampaignData(prev => ({
+      ...prev,
+      milestones: prev.milestones.map((milestone, i) => 
+        i === index ? { ...milestone, [field]: value } : milestone
+      )
+    }));
+  };
+
+  const addMilestone = () => {
+    setCampaignData(prev => ({
+      ...prev,
+      milestones: [...prev.milestones, { title: '', description: '', targetDate: '', fundingPercentage: 0 }]
+    }));
+  };
+
+  const removeMilestone = (index: number) => {
+    if (campaignData.milestones.length > 1) {
+      setCampaignData(prev => ({
+        ...prev,
+        milestones: prev.milestones.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    switch (step) {
+      case 0: // Company Info
+        return !!(campaignData.companyName && campaignData.industry && campaignData.description);
+      case 1: // Campaign Details
+        return !!(campaignData.name && campaignData.fundingGoal > 0);
+      case 2: // Tokenomics
+        return !!(campaignData.tokenSymbol && campaignData.tokenPrice > 0 && campaignData.totalSupply > 0);
+      case 3: // Milestones
+        return campaignData.milestones.every(m => m.title && m.description && m.targetDate && m.fundingPercentage > 0);
+      default:
+        return true;
+    }
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+    } else {
+      toast.error('Please fill in all required fields');
+    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 0));
+  };
+
+  const handleSubmit = async () => {
+    if (!wallet.isConnected) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+
+    console.log('Starting campaign creation...', campaignData);
+    
+    try {
+      toast.info('Creating campaign on XRPL...');
+      const campaignId = await createCampaign({
+        name: campaignData.name,
+        description: campaignData.description,
+        industry: campaignData.industry,
+        fundingGoal: campaignData.fundingGoal,
+        tokenSymbol: campaignData.tokenSymbol,
+        tokenPrice: campaignData.tokenPrice,
+        totalSupply: campaignData.totalSupply,
+        milestones: campaignData.milestones.map((m, index) => ({
+          id: `${campaignData.name.toLowerCase().replace(/\s+/g, '-')}-milestone-${index + 1}`,
+          title: m.title,
+          description: m.description,
+          targetDate: new Date(m.targetDate),
+          fundingPercentage: m.fundingPercentage,
+          status: 'pending' as const,
+          proofDocuments: [],
+          escrowAmount: (campaignData.fundingGoal * m.fundingPercentage) / 100
+        })),
+        launchDate: new Date(campaignData.launchDate),
+        endDate: new Date(campaignData.endDate),
+        status: 'active' as const,
+        createdAt: new Date(),
+        founderAddress: wallet.address!,
+        currentFunding: 0,
+        circulatingSupply: 0,
+        image: '/api/placeholder/400/300',
+        amm: {
+          poolId: 'pending',
+          tvl: 0,
+          apr: 0,
+          depth: 0
+        }
+      });
+
+      toast.success('Campaign created successfully!');
+      onComplete(campaignId);
+    } catch (error) {
+      console.error('Campaign creation error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create campaign');
+    }
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 0: // Company Info
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="companyName">Company Name *</Label>
+              <Input
+                id="companyName"
+                value={campaignData.companyName}
+                onChange={(e) => updateCampaignData('companyName', e.target.value)}
+                placeholder="Enter your company name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="industry">Industry *</Label>
+              <Select value={campaignData.industry} onValueChange={(value) => updateCampaignData('industry', value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select your industry" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INDUSTRIES.map(industry => (
+                    <SelectItem key={industry} value={industry}>{industry}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Company Description *</Label>
+              <Textarea
+                id="description"
+                value={campaignData.description}
+                onChange={(e) => updateCampaignData('description', e.target.value)}
+                placeholder="Describe your company and what you do..."
+                rows={4}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="website">Website</Label>
+              <Input
+                id="website"
+                value={campaignData.website}
+                onChange={(e) => updateCampaignData('website', e.target.value)}
+                placeholder="https://yourcompany.com"
+              />
+            </div>
+          </div>
+        );
+
+      case 1: // Campaign Details
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="campaignName">Campaign Name *</Label>
+              <Input
+                id="campaignName"
+                value={campaignData.name}
+                onChange={(e) => updateCampaignData('name', e.target.value)}
+                placeholder="Enter campaign name"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="fundingGoal">Funding Goal (RLUSD) *</Label>
+              <Input
+                id="fundingGoal"
+                type="number"
+                value={campaignData.fundingGoal}
+                onChange={(e) => updateCampaignData('fundingGoal', Number(e.target.value))}
+                placeholder="100000"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="launchDate">Launch Date</Label>
+                <Input
+                  id="launchDate"
+                  type="date"
+                  value={campaignData.launchDate}
+                  onChange={(e) => updateCampaignData('launchDate', e.target.value)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="endDate">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={campaignData.endDate}
+                  onChange={(e) => updateCampaignData('endDate', e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 2: // Tokenomics
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tokenSymbol">Token Symbol *</Label>
+              <Input
+                id="tokenSymbol"
+                value={campaignData.tokenSymbol}
+                onChange={(e) => updateCampaignData('tokenSymbol', e.target.value.toUpperCase())}
+                placeholder="PIT"
+                maxLength={6}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tokenPrice">Token Price (RLUSD) *</Label>
+              <Input
+                id="tokenPrice"
+                type="number"
+                step="0.01"
+                value={campaignData.tokenPrice}
+                onChange={(e) => updateCampaignData('tokenPrice', Number(e.target.value))}
+                placeholder="1.00"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="totalSupply">Total Supply *</Label>
+              <Input
+                id="totalSupply"
+                type="number"
+                value={campaignData.totalSupply}
+                onChange={(e) => updateCampaignData('totalSupply', Number(e.target.value))}
+                placeholder="1000000"
+              />
+            </div>
+            
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium mb-2">Token Economics Summary</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span>Market Cap:</span>
+                  <span>${(campaignData.tokenPrice * campaignData.totalSupply).toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Tokens for Funding:</span>
+                  <span>{(campaignData.fundingGoal / campaignData.tokenPrice).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 3: // Milestones
+        return (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Campaign Milestones</h3>
+              <Button onClick={addMilestone} variant="outline" size="sm">
+                Add Milestone
+              </Button>
+            </div>
+            
+            {campaignData.milestones.map((milestone, index) => (
+              <Card key={index}>
+                <CardContent className="pt-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-medium">Milestone {index + 1}</h4>
+                      {campaignData.milestones.length > 1 && (
+                        <Button 
+                          onClick={() => removeMilestone(index)} 
+                          variant="ghost" 
+                          size="sm"
+                        >
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Title *</Label>
+                        <Input
+                          value={milestone.title}
+                          onChange={(e) => updateMilestone(index, 'title', e.target.value)}
+                          placeholder="Milestone title"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Target Date *</Label>
+                        <Input
+                          type="date"
+                          value={milestone.targetDate}
+                          onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Description *</Label>
+                      <Textarea
+                        value={milestone.description}
+                        onChange={(e) => updateMilestone(index, 'description', e.target.value)}
+                        placeholder="Describe what needs to be achieved..."
+                        rows={2}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>Funding Release (%) *</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={milestone.fundingPercentage}
+                        onChange={(e) => updateMilestone(index, 'fundingPercentage', Number(e.target.value))}
+                        placeholder="25"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-700">
+                Total funding release: {campaignData.milestones.reduce((sum, m) => sum + m.fundingPercentage, 0)}%
+              </p>
+            </div>
+          </div>
+        );
+
+      case 4: // Review
+        return (
+          <div className="space-y-6">
+            <h3 className="text-lg font-medium">Review Your Campaign</h3>
+            
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Company Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Company:</span>
+                    <span>{campaignData.companyName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Industry:</span>
+                    <span>{campaignData.industry}</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Campaign Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Campaign:</span>
+                    <span>{campaignData.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Funding Goal:</span>
+                    <span>${campaignData.fundingGoal.toLocaleString()} RLUSD</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Token:</span>
+                    <span>{campaignData.tokenSymbol} @ ${campaignData.tokenPrice}</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Milestones ({campaignData.milestones.length})</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {campaignData.milestones.map((milestone, index) => (
+                    <div key={index} className="flex justify-between">
+                      <span>{milestone.title}</span>
+                      <span>{milestone.fundingPercentage}%</span>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      {/* Progress Steps */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          {STEPS.map((step, index) => {
+            const Icon = step.icon;
+            const isActive = index === currentStep;
+            const isCompleted = index < currentStep;
+            
+            return (
+              <div key={step.id} className="flex items-center">
+                <div className={`
+                  flex items-center justify-center w-10 h-10 rounded-full border-2
+                  ${isActive ? 'border-primary-600 bg-primary-600 text-white' : 
+                    isCompleted ? 'border-green-600 bg-green-600 text-white' : 
+                    'border-gray-300 bg-white text-gray-400'}
+                `}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="ml-3">
+                  <div className={`text-sm font-medium ${isActive ? 'text-primary-600' : isCompleted ? 'text-green-600' : 'text-gray-400'}`}>
+                    {step.title}
+                  </div>
+                </div>
+                {index < STEPS.length - 1 && (
+                  <div className={`mx-4 h-0.5 w-16 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Step Content */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{STEPS[currentStep].title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {renderStepContent()}
+        </CardContent>
+      </Card>
+
+      {/* Navigation */}
+      <div className="flex justify-between mt-6">
+        <Button
+          onClick={prevStep}
+          disabled={currentStep === 0}
+          variant="outline"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Previous
+        </Button>
+        
+        {currentStep === STEPS.length - 1 ? (
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading || !wallet.isConnected}
+          >
+            {isLoading ? 'Creating Campaign...' : 'Launch Campaign'}
+          </Button>
+        ) : (
+          <Button
+            onClick={nextStep}
+            disabled={!validateStep(currentStep)}
+          >
+            Next
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+} 

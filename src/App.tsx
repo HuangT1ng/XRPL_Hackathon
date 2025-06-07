@@ -4,6 +4,8 @@ import { Footer } from '@/components/layout/Footer';
 import { Landing } from '@/pages/Landing';
 import { CampaignDetail } from '@/pages/CampaignDetail';
 import { Portfolio } from '@/pages/Portfolio';
+import { CampaignOnboard } from '@/pages/CampaignOnboard';
+import { TestXRPL } from '@/pages/TestXRPL';
 import { Toaster } from '@/components/ui/sonner';
 import './css/App.css';
 
@@ -17,6 +19,8 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/campaign/:id" element={<CampaignDetail />} />
             <Route path="/portfolio" element={<Portfolio />} />
+            <Route path="/onboard" element={<CampaignOnboard />} />
+            <Route path="/test" element={<TestXRPL />} />
           </Routes>
         </main>
         <Footer />

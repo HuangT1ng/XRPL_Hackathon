@@ -271,10 +271,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 | Launch Campaign | Browse Campaigns | Portfolio |
 |----------------|------------------|-----------|
-| ![Launch](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/52aa85ee-c2db-4878-8e50-2368d2878534" />
-) | ![Browse](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/4718b021-6c3e-4370-9f33-061f41eb88f0" />
-) | ![Portfolio](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/20830817-076b-4fc1-9e1a-e363f5bc72be" />
-) |
+| ![Launch](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/52aa85ee-c2db-4878-8e50-2368d2878534" />| ![Browse](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/4718b021-6c3e-4370-9f33-061f41eb88f0" />| ![Portfolio](<img width="1470" alt="image" src="https://github.com/user-attachments/assets/20830817-076b-4fc1-9e1a-e363f5bc72be" />|
 
 ## 💡 How CrowdLift Works with the XRP Ledger
 

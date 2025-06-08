@@ -205,13 +205,13 @@ npm run build
 # Lint code
 npm run lint
 ```
-
+[Slide Deck](https://www.canva.com/design/DAGprr_A9UI/cGRjaD_AzRMizf2riRTxyw/edit)
 
 ## 🚀 Demo Video
 
-[![Watch the demo](https://img.youtube.com/vi/your-demo-video-id/0.jpg)](https://youtu.be/your-demo-video-id)
+[![Watch the demo](https://youtu.be/dwSXikncyJw)
 
-> _Click the image above to watch a full walkthrough of CrowdLift, including campaign creation, wallet integration, and real XRPL transactions._
+
 
 ## 🖼️ Screenshots
 

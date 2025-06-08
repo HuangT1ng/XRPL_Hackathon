@@ -2,7 +2,7 @@
 
 ## Overview
 
-CrowdLift v2 is a modern crowdfunding platform for SMEs, built on the XRP Ledger (XRPL). It enables small and medium enterprises to tokenize their fundraising campaigns, while providing investors with instant liquidity through AMM pools and partial exit capabilities.
+CrowdLift is a modern crowdfunding platform for SMEs, built on the XRP Ledger (XRPL). It enables small and medium enterprises to tokenize their fundraising campaigns, while providing investors with instant liquidity through AMM pools and partial exit capabilities.
 
 ## 🚀 Key Features
 

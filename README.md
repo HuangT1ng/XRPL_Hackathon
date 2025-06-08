@@ -1,4 +1,4 @@
-# CrowdLift v2 - XRPL-Powered SME Fundraising Platform
+# CrowdLift XRPL-Powered SME Fundraising Platform
 
 ## Overview
 

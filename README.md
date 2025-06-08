@@ -4,24 +4,6 @@
 
 CrowdLift is a modern crowdfunding platform for SMEs, built on the XRP Ledger (XRPL). It enables small and medium enterprises to tokenize their fundraising campaigns, while providing investors with instant liquidity through AMM pools and partial exit capabilities.
 
-## 🚀 Key Features
-
-### For SMEs
-- **Instant Campaign Creation**: Launch tokenized fundraising campaigns in minutes
-- **DID-Based Identity**: Verifiable identity with credit score integration
-- **Real-Time Credit Scoring**: Integration with Xero/PayNow APIs for dynamic credit assessment
-
-### For Investors
-- **Liquid PIT Tokens**: Trade pre-IPO tokens 24/7 on XRPL AMMs
-- **Partial Exit Slider**: Sell 10/25/50% of holdings instantly
-- **Safety Net Protection**: Community-funded insurance against defaults
-
-### For the Ecosystem
-- **Watch-Tower Bot**: Automated monitoring and refund protection
-- **AMM Liquidity Pools**: Earn fees while providing liquidity
-- **Safety Fund**: 10% of trading fees fund community protection
-- **Real-Time Transparency**: All activities tracked on XRPL
-
 ## 🏗️ Folder Structure
 
 ```
@@ -113,81 +95,7 @@ VITE_XRPL_SERVER=wss://s.altnet.rippletest.net:51233
 VITE_RLUSD_ISSUER=rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De
 ```
 
-## 🔄 User Flow
 
-### SME Onboarding
-1. **Connect Wallet**: Generate XRPL wallet or connect existing
-2. **KYC Submission**: Upload company documents
-3. **DID Creation**: Automated DID creation with credit score hash
-4. **Campaign Setup**: Use wizard to configure campaign parameters
-
-### Campaign Launch
-1. **Token Minting**: Mint PIT tokens using `NFTokenMint`
-2. **AMM Creation**: Create PIT/RLUSD pool with `AMMCreate`
-3. **Go Live**: Campaign becomes available for investment
-
-### Investment & Trading
-1. **Token Purchase**: Swap RLUSD for PIT tokens via AMM
-2. **Partial Exits**: Use slider to sell 10/25/50% instantly
-3. **Liquidity Provision**: Add liquidity to earn trading fees
-4. **Portfolio Tracking**: Real-time portfolio updates
-
-## 🔒 Safety Mechanisms
-
-### Watch-Tower Bot
-- **Dormancy Detection**: Monitors SME wallet activity
-- **Auto-Refund**: Triggers refund if SME inactive >7 days
-- **Real-Time Alerts**: Notifies stakeholders of issues
-
-### SME Safety Fund
-- **Fee Collection**: 10% of AMM trading fees
-- **Default Protection**: Covers investor losses from late-stage defaults
-- **Community Governance**: Transparent fund management
-- **Proportional Refunds**: Fair distribution to affected investors
-
-### Technical Safeguards
-- **Slippage Protection**: Configurable trading tolerances
-
-## 📊 Token Economics
-
-### PIT Token Structure
-- **Type**: Semi-fungible NFT on XRPL
-- **Backing**: Platform-based
-- **Liquidity**: AMM pools provide instant trading
-- **Governance**: Platform voting rights
-
-### Fee Structure
-- **Platform Fee**: ~$0.002 per transaction (XRPL network fee only)
-- **Trading Fee**: 0.5% on AMM swaps
-- **Safety Fund**: 10% of trading fees
-- **No Hidden Costs**: Transparent, minimal fees
-
-## 🎯 Regulatory Compliance
-
-### MAS Sandbox Ready
-- **DID Integration**: Verifiable identity for compliance
-- **Audit Trail**: Complete transaction history on XRPL
-- **KYC/AML**: Built-in verification workflows
-- **Risk Management**: Automated safety mechanisms
-
-### Documentation
-- **Financial Tracking**: Real-time fund flow monitoring
-- **Compliance Reporting**: Automated regulatory reports
-- **Investor Protection**: Multi-layer safety nets
-
-## 🚀 Deployment
-
-### Production Checklist
-- [ ] XRPL Mainnet configuration
-- [ ] Real API integrations (Xero, PayNow)
-- [ ] Security audit completion
-- [ ] Watch-tower deployment
-
-### Scaling Considerations
-- **XRPL Performance**: 1,500+ TPS capacity
-- **Database Optimization**: PostgreSQL with Redis caching
-- **CDN Integration**: Global content delivery
-- **Monitoring**: Comprehensive observability stack
 
 ## 🤝 Contributing
 
@@ -205,6 +113,8 @@ npm run build
 # Lint code
 npm run lint
 ```
+## Slide Deck
+
 [Slide Deck](https://www.canva.com/design/DAGprr_A9UI/cGRjaD_AzRMizf2riRTxyw/edit)
 
 ## 🚀 Demo Video
@@ -228,9 +138,6 @@ npm run lint
 - **Portfolio:** Users can view their XRP and token balances, fetched live from the XRPL testnet.
 - **All transactions are signed and submitted via xrpl.js, and can be viewed on the XRPL testnet block explorer.**
 
-## Video Walkthrough & Repo Structure
-
-[![Watch the walkthrough](https://img.youtube.com/vi/your-walkthrough-video-id/0.jpg)](https://youtu.be/your-walkthrough-video-id)
 
 - Explains the project, code structure, and demonstrates all features live.
 - Shows real transactions on the XRPL testnet.
@@ -242,35 +149,6 @@ npm run lint
 - **State**: Zustand store in `src/store/`
 - **Types**: TypeScript definitions in `src/types/`
 
-## 📈 Roadmap
-
-### Phase 1: MVP (Current)
-- ✅ Core XRPL integration
-- ✅ Campaign creation wizard
-- ✅ AMM trading interface
-- ✅ Watch-tower safety mechanisms
-
-### Phase 2: Production (Month 1-3)
-- [ ] MAS sandbox integration
-- [ ] Real API integrations (Xero, PayNow)
-- [ ] Advanced analytics dashboard
-- [ ] Mobile PWA optimization
-- [ ] Security audit & penetration testing
-
-### Phase 3: Scale (Month 3-6)
-- [ ] Multi-currency support
-- [ ] Cross-chain bridges (Axelar)
-- [ ] Advanced DeFi features
-- [ ] Institutional investor tools
-- [ ] Global expansion
-
-### Phase 4: Ecosystem (Month 6-12)
-- [ ] SME lending protocols
-- [ ] Insurance marketplace
-- [ ] Credit scoring DAO
-- [ ] Secondary market features
-- [ ] Enterprise partnerships
-
 ## 📞 Support
 
 ### Documentation
@@ -278,10 +156,6 @@ npm run lint
 - **API Reference**: `/docs/api`
 - **Integration Guide**: `/docs/integration`
 
-### Community
-- **Discord**: [Community Server]
-- **GitHub**: [Issues & Discussions]
-- **Email**: support@crowdlift.platform
 
 ## 📄 License
 
